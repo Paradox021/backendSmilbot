@@ -2,51 +2,87 @@
 
 import * as cardService from '../services/cardService.js'
 
-async function getCards(req, res){
-    const cards = await cardService.getCards()
-    res.status(200).json(cards)
+const getCards = async (req, res) => {
+    try {
+        const cards = await cardService.getCards()
+        res.status(200).json(cards)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
 }
 
-async function getMythicCard(req, res){
-    const cards = await cardService.getMythicCard()
-    res.status(200).json(cards)
+const getMythicCard = async (req, res) => {
+    try {
+        const mythicCard = await cardService.getMythicCard()
+        res.status(200).json(mythicCard)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
 }
 
-async function getLegendaryCard(req, res){
-    const cards = await cardService.getLegendaryCard()
-    res.status(200).json(cards)
+const getLegendaryCard = async (req, res) => {
+    try {
+        const legendaryCard = await cardService.getLegendaryCard()
+        res.status(200).json(legendaryCard)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
 }
 
-async function getEpicCard(req, res){
-    const cards = await cardService.getEpicCard()
-    res.status(200).json(cards)
+const getEpicCard = async (req, res) => {
+    try {
+        const epicCard = await cardService.getEpicCard()
+        res.status(200).json(epicCard)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
 }
 
-async function getRareCard(req, res){
-    const cards = await cardService.getRareCard()
-    res.status(200).json(cards)
+const getRareCard = async (req, res) => {
+    try {
+        const rareCard = await cardService.getRareCard()
+        res.status(200).json(rareCard)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
 }
 
-async function getCommonCard(req, res){
-    const cards = await cardService.getCommonCard()
-    res.status(200).json(cards)
+const getCommonCard = async (req, res) => {
+    try {
+        const commonCard = await cardService.getCommonCard()
+        res.status(200).json(commonCard)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
 }
 
-async function getCard(req, res){
-    const card = await cardService.getCard(req.params.id)
-    res.status(200).json(card)
+const getCard = async (req, res) => {
+    try {
+        const card = await cardService.getCard(req.params.id)
+        res.status(200).json(card)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
 }
 
-async function createCard(req, res){
-    const card = req.body
-    card.imageUrl = req.file.filename
-    const newCard = await cardService.createCard(card)
-    res.status(201).json(newCard)
+const createCard = async (req, res) => {
+    try {
+        const cardData = JSON.parse(req.body.data)
+        cardData.imageUrl = req.file.filename
+        const card = await cardService.createCard(cardData)
+        res.status(201).json(card)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
 }
 
-async function deleteCard(req, res){
-    await cardService.deleteCard(req.params.id)
-    res.status(204).json()
+const deleteCard = async (req, res) => {
+    try {
+        const card = await cardService.deleteCard(req.params.id)
+        res.status(200).json(card)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
 }
 
 export { getCards, getMythicCard, getLegendaryCard, getEpicCard, 

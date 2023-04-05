@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv'
 import morgan from 'morgan'
 import cors from 'cors'
 import cardRouter from './routers/cardRouter.js'
+import userRouter from './routers/userRouter.js'
 import path from 'path'
 
 const __dirname = path.resolve()
@@ -23,6 +24,7 @@ app.get('/', (req, res) => {
 
 app.use('/public', express.static(`${__dirname}/storage/images`))
 app.use('/card', cardRouter)
+app.use('/user', userRouter)
 
 
 async function main(){

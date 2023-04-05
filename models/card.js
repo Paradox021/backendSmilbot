@@ -8,7 +8,8 @@ const cardSchema = new Schema(
         name: {type:String, required:true, trim:true},
         description: {type:String, required:true, trim:true},
         type: String,
-        imageUrl: String
+        imageUrl: String,
+        author: String,
     },
     {
         timestamps:true,
