@@ -12,6 +12,11 @@ const createUser = async (user) => {
     
 }
 
+const getUserCards = async (discordId) => {
+    const user = await User.findOne({ discordId: discordId }).populate('cards')
+    return user
+}
+
 const deleteUser = async (id) => await User.findByIdAndDelete(id)
 
 const addCard = async (discordId, cardId) => {
@@ -47,4 +52,5 @@ const dailyBalance = async (discordId, amount) => {
 
 
 
-export { getUsers, getUser, createUser, deleteUser, addCard, removeCard, addBalance, removeBalance, dailyBalance }
+export { getUsers, getUser, createUser, deleteUser, addCard, removeCard,
+     addBalance, removeBalance, dailyBalance, getUserCards }
