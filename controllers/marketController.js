@@ -3,10 +3,10 @@
 import * as marketService from '../services/marketService.js'
 import * as userService from '../services/userService.js'
 
-const getMarket = async (req, res) => {
+const getAllMarketOffers = async (req, res) => {
     try {
-        const market = await marketService.getMarket()
-        res.status(200).json(market)
+        const offers = await marketService.getAllMarketOffers(req.params.marketId)
+        res.status(200).json(offers)
     } catch (error) {
         res.status(500).json({error: error.message})
     }

@@ -7,6 +7,11 @@ const getMarketOffer = async (marketId, offerId) => {
     return market.offers.id(offerId)
 }
 
+const getAllMarketOffers = async (marketId) => {
+    const market = await Market.findById(marketId)
+    return market.offers
+}
+
 const addOffer = async (marketId, offer) => {
   const market = await Market.findById(marketId)
   market.offers.push(offer)
