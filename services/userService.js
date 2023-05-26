@@ -11,9 +11,16 @@ const createUser = async (user) => {
     return await newUser.save()
     
 }
-
+// devuelve el usuario con las cartas que tiene añadiendo el campo count a cada carta con el numero de esa carta que tiene
 const getUserCards = async (discordId) => {
-    const user = await User.findOne({ discordId: discordId }).populate('cards')
+    const user = await User.aggregate([
+        { $match: { discordId: discordId } },
+        { $lookup: { from: 'cards', localField: 'cards', foreignField: '_id', as: 'cards' } },
+        { $unwind: '$cards' },
+        { $group: { _id: '$cards', count: { $sum: 1 } } },
+        { $addFields: { 'cards.count': '$count' } },
+        { $replaceRoot: { newRoot: '$cards' } }
+    ])
     return user
 }
 
