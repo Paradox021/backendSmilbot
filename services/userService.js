@@ -50,7 +50,16 @@ const dailyBalance = async (discordId, amount) => {
     return await user.save()
 }
 
+const getUserWithNumberOfCards = async (discordId) => {
+    const user = User.aggregate([
+        { $match: { discordId: discordId } },
+        { $lookup: { from: 'cards', localField: 'cards', foreignField: '_id', as: 'cards' } },
+        { $unwind: '$cards' },
+        { $group: { _id: '$cards.type', count: { $sum: 1 } } }
+    ])
+    return user
+}
 
 
 export { getUsers, getUser, createUser, deleteUser, addCard, removeCard,
-     addBalance, removeBalance, dailyBalance, getUserCards }
+     addBalance, removeBalance, dailyBalance, getUserCards, getUserWithNumberOfCards}
