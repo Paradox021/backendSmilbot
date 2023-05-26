@@ -20,6 +20,7 @@ const offerSchema = new Schema(
 const marketSchema = new Schema(
     {
         _id: {type:Schema.ObjectId, auto:true},
+        serverId: {type:String, required:true},
         offers: [offerSchema]
     },
     {
