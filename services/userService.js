@@ -13,15 +13,19 @@ const createUser = async (user) => {
 }
 // devuelve el usuario con las cartas que tiene añadiendo el campo count a cada carta con el numero de esa carta que tiene
 const getUserCards = async (discordId) => {
-    const user = await User.aggregate([
-        { $match: { discordId: discordId } },
-        { $lookup: { from: 'cards', localField: 'cards', foreignField: '_id', as: 'cards' } },
-        { $unwind: '$cards' },
-        { $group: { _id: '$cards', count: { $sum: 1 } } },
-        { $addFields: { 'cards.count': '$count' } },
-        { $replaceRoot: { newRoot: '$cards' } }
-    ])
-    return user
+    const user = await User.findOne({ discordId: discordId }).populate('cards')
+    const copiaUsuario = JSON.parse(JSON.stringify(user));
+    copiaUsuario.cards = user.cards.reduce((acc, card) => {
+        const found = acc.find(c => c._id.toString() === card._id.toString())
+        if (found) {
+            found.count++
+        } else { 
+            const copia = JSON.parse(JSON.stringify(card));
+            acc.push({...copia, count: 1})
+        }
+        return acc
+    }, [])
+    return copiaUsuario
 }
 
 const deleteUser = async (id) => await User.findByIdAndDelete(id)
