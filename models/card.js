@@ -1,6 +1,9 @@
 // model for card
 
 import { Schema, model } from 'mongoose'
+import * as dotenv from 'dotenv'
+
+dotenv.config()
 
 const cardSchema = new Schema(
     {
@@ -18,8 +21,9 @@ const cardSchema = new Schema(
 )
 
 cardSchema.methods.setImgUrl = function setImgUrl(filename){
-    const { HOST, PORT } = process.env
-    this.imageUrl = `${HOST}:${PORT}/public/${filename}`
+    const { PORT, IMAGE_HOST } = process.env
+    console.log("host --- ",IMAGE_HOST)
+    this.imageUrl = `${IMAGE_HOST}:${PORT}/public/${filename}`
 }
 
 const Card = model('Card', cardSchema)

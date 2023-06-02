@@ -69,6 +69,7 @@ const createCard = async (req, res) => {
     try {
         const cardData = JSON.parse(req.body.data)
         cardData.imageUrl = req.file.filename
+        console.log("datos de cartas --- ",cardData)
         const card = await cardService.createCard(cardData)
         res.status(201).json(card)
     } catch (error) {
