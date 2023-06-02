@@ -8,8 +8,9 @@ const getMarketOffer = async (marketId, offerId) => {
 }
 
 const getAllMarketOffers = async (marketId) => {
-    const market = await Market.findById(marketId)
-    return market.offers
+    const market = await Market.find({discordId:marketId}).populate('offers.cardId')
+    if(!market) return []
+    return market[0].offers
 }
 
 const addOffer = async (marketId, offer) => {
@@ -32,4 +33,4 @@ const removeOffer = async (marketId, offerId) => {
     await market.save()
 }
 
-export default { getMarketOffer, addOffer, buyOffer, removeOffer }
+export { getMarketOffer, addOffer, buyOffer, removeOffer, getAllMarketOffers }
