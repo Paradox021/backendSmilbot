@@ -31,9 +31,10 @@ userSchema.methods.getTimeToUseCommand = function getTimeToUseCommand(){
     const now = Date.now()
     const lastTimeCommand = this.lastTimeCommand
     const diff = now - lastTimeCommand
-    const hours = Math.floor(diff / 1000 / 60 / 60)
-    const minutes = Math.floor((diff - hours * 1000 * 60 * 60) / 1000 / 60)
-    return { hours, minutes }
+    const timeToUseCommand = 1000 * 60 * 60 * 23 - diff
+    const diffHours = Math.floor(timeToUseCommand / 1000 / 60 / 60)
+    const diffMinutes = Math.floor(timeToUseCommand / 1000 / 60 - diffHours * 60)
+    return { diffHours, diffMinutes }
 }
 
 userSchema.methods.updateLastTimeCommand = function updateLastTimeCommand(){

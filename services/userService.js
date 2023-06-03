@@ -38,8 +38,14 @@ const addCard = async (discordId, cardId) => {
 
 const removeCard = async (discordId, cardId) => {
     const user = await getUser(discordId)
-    user.cards.pull(cardId)
-    return await user.save()
+    const cardIndex = user.cards.findIndex(card => card.toString() == cardId.toString())
+
+    if (cardIndex === -1) throw new Error('No se encontró ninguna carta con ese ID.')
+    
+    const deletedCard = user.cards.splice(cardIndex, 1)
+    await user.save()
+    return deletedCard
+    
 }
 
 const addBalance = async (discordId, amount) => {
@@ -71,6 +77,15 @@ const getUserWithNumberOfCards = async (discordId) => {
     return user
 }
 
+const getUserCardByName = async (discordId, cardName) => {
+    console.log(discordId, cardName)
+    const user = await User.findOne({ discordId: discordId }).populate('cards')
+    const card = user.cards.find(card => card.name === cardName)
+    if(!card) throw new Error('Card not found in your collection')
+    return { card, userId: user._id }
+}
+
 
 export { getUsers, getUser, createUser, deleteUser, addCard, removeCard,
-     addBalance, removeBalance, dailyBalance, getUserCards, getUserWithNumberOfCards}
+     addBalance, removeBalance, dailyBalance, getUserCards, getUserWithNumberOfCards,
+     getUserCardByName}

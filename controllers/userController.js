@@ -83,8 +83,8 @@ const removeBalance = async (req, res) => {
 const dailyBalance = async (req, res) => {
     try {
         const user = await userService.getUser(req.params.id)
-        const { hours, minutes } = user.getTimeToUseCommand()
-        if (!user.canUseCommand()) return res.status(500).json({ error: `You can't use this command yet\nYou have to wait ${hours} hours and ${minutes} minutes to use it again!` })
+        const { diffHours, diffMinutes } = user.getTimeToUseCommand()
+        if (!user.canUseCommand()) return res.status(500).json({ error: `You can't use this command yet\nYou have to wait ${diffHours} hours and ${diffMinutes} minutes to use it again!` })
         const userUpdated = await userService.dailyBalance(req.params.id, 100)
         return res.status(200).json(userUpdated)
     } catch (error) {
@@ -96,7 +96,6 @@ const getUserWithCards = async (req, res) => {
     try {
         const user = await userService.getUser(req.params.id)
         const userWithCards = await userService.getUserCards(user.discordId)
-        console.log("usario --- ",userWithCards)
         res.status(200).json(userWithCards)
     } catch (error) {
         res.status(500).json({ error: error.message })

@@ -8,7 +8,7 @@ const offerSchema = new Schema(
         cardId: {type:Schema.ObjectId, ref:'Card'},
         price: {type:Number, required:true},
         seller: {type:Schema.ObjectId, ref:'User'},
-        buyer: {type:Schema.ObjectId, ref:'User'},
+        buyer: {type:Schema.ObjectId, ref:'User', required:false},
         active: {type:Boolean, default:true}
     },
     {
