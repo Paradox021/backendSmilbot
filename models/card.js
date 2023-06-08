@@ -23,7 +23,7 @@ const cardSchema = new Schema(
 cardSchema.methods.setImgUrl = function setImgUrl(filename){
     const { PORT, IMAGE_HOST } = process.env
     console.log("host --- ",IMAGE_HOST)
-    this.imageUrl = `${IMAGE_HOST}:${PORT}/public/${filename}`
+    this.imageUrl = `${IMAGE_HOST}/public/${filename}`
 }
 
 const Card = model('Card', cardSchema)
