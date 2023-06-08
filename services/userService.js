@@ -32,6 +32,7 @@ const deleteUser = async (id) => await User.findByIdAndDelete(id)
 
 const addCard = async (discordId, cardId) => {
     const user = await getUser(discordId)
+    console.log(user)
     user.cards.push(cardId)
     return await user.save()
 }
@@ -50,6 +51,12 @@ const removeCard = async (discordId, cardId) => {
 
 const addBalance = async (discordId, amount) => {
     const user = await getUser(discordId)
+    user.balance += amount
+    return await user.save()
+}
+
+const addBalanceWithId = async (userId, amount) => {
+    const user = await User.findById(userId)
     user.balance += amount
     return await user.save()
 }
@@ -88,4 +95,4 @@ const getUserCardByName = async (discordId, cardName) => {
 
 export { getUsers, getUser, createUser, deleteUser, addCard, removeCard,
      addBalance, removeBalance, dailyBalance, getUserCards, getUserWithNumberOfCards,
-     getUserCardByName}
+     getUserCardByName, addBalanceWithId}

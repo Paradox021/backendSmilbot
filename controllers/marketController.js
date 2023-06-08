@@ -35,20 +35,24 @@ const addOffer = async (req, res) => {
 
 const buyOffer = async (req, res) => {
     try {
-        const offer = await marketService.buyOffer(req.params.marketId, req.params.offerId)
-        await userService.addCard(req.params.userId, offer.card)
-        await userService.removeBalance(req.params.userId, offer.price)
-        await userService.addBalance(offer.seller, offer.price)
+        const user = await userService.getUser(req.body.discordId)
+        const offer = await marketService.buyOffer(req.params.marketId, req.params.offerId, user._id)
+        console.log(offer)
+        await userService.addCard(req.body.discordId, offer.cardId)
+        await userService.removeBalance(req.body.discordId, offer.price)
+        await userService.addBalanceWithId(offer.seller, offer.price)
         res.status(200).json(offer)
     } catch (error) {
+        console.log("error --- ",error)
         res.status(500).json({error: error.message})
     }
 }
 
 const removeOffer = async (req, res) => {
     try {
-        const offer = await marketService.removeOffer(req.params.marketId, req.params.offerId)
-        await userService.addCard(req.params.userId, offer.card)
+        const user = await userService.getUser(req.body.discordId)
+        const offer = await marketService.removeOffer(req.params.marketId, req.params.offerId, user._id)
+        await userService.addCard(req.body.discordId, offer.cardId)
         res.status(200).json(offer)
     } catch (error) {
         res.status(500).json({error: error.message})

@@ -8,7 +8,7 @@ dotenv.config()
 const cardSchema = new Schema(
     {
         _id: {type:Schema.ObjectId, auto:true},
-        name: {type:String, required:true, trim:true},
+        name: {type:String, required:true, trim:true, unique:true},
         description: {type:String, required:true, trim:true},
         type: String,
         imageUrl: String,
