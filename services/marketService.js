@@ -9,6 +9,7 @@ const getMarketOffer = async (marketId, offerId) => {
 
 const getAllMarketOffers = async (marketId) => {
     const market = await Market.find({discordId:marketId}).populate('offers.cardId')
+    console.log(market)
     if(!market) return []
     const activeOffers = market[0].offers.filter(offer => offer.active == true)
     if(!market) return []
