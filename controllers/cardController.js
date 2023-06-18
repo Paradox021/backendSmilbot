@@ -2,6 +2,14 @@
 
 import * as cardService from '../services/cardService.js'
 
+const cardTypes = {
+    common: 0,
+    rare: 1,
+    epic: 2,
+    legendary: 3,
+    mythic: 4
+}
+
 const getCards = async (req, res) => {
     try {
         const cards = await cardService.getCards()
@@ -69,6 +77,7 @@ const createCard = async (req, res) => {
     try {
         const cardData = JSON.parse(req.body.data)
         cardData.imageUrl = req.file.filename
+        cardData.type = cardTypes[cardData.type]
         const card = await cardService.createCard(cardData)
         res.status(201).json(card)
     } catch (error) {
