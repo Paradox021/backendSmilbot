@@ -16,8 +16,7 @@ const getUserCards = async (discordId) => {
     const user = await User.findOne({ discordId: discordId }).populate('cards')
     const copiaUsuario = JSON.parse(JSON.stringify(user));
     copiaUsuario.cards = copiaUsuario.cards.sort((a, b) => a.type - b.type)
-    console.log(copiaUsuario.cards)
-    copiaUsuario.cards = user.cards.reduce((acc, card) => {
+    copiaUsuario.cards = copiaUsuario.cards.reduce((acc, card) => {
         const found = acc.find(c => c._id.toString() === card._id.toString())
         if (found) {
             found.count++
