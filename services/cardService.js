@@ -2,7 +2,7 @@
 
 import { Card } from '../models/card.js'
 
-const getCards = async () => await Card.find()
+const getCards = async () => await Card.find().sort({type:1})
 
 const getMythicCard = async () => await Card.aggregate([{ $match: { type: 4 } }, { $sample: { size: 1 } }])
 

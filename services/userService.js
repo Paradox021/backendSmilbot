@@ -13,7 +13,7 @@ const createUser = async (user) => {
 }
 // devuelve el usuario con las cartas que tiene añadiendo el campo count a cada carta con el numero de esa carta que tiene
 const getUserCards = async (discordId) => {
-    const user = await User.findOne({ discordId: discordId }).populate('cards')
+    const user = await User.findOne({ discordId: discordId }).populate('cards').sort({type:1})
     const copiaUsuario = JSON.parse(JSON.stringify(user));
     copiaUsuario.cards = user.cards.reduce((acc, card) => {
         const found = acc.find(c => c._id.toString() === card._id.toString())
