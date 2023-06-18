@@ -4,15 +4,15 @@ import { Card } from '../models/card.js'
 
 const getCards = async () => await Card.find()
 
-const getMythicCard = async () => await Card.aggregate([{ $match: { type: "mythic" } }, { $sample: { size: 1 } }])
+const getMythicCard = async () => await Card.aggregate([{ $match: { type: 4 } }, { $sample: { size: 1 } }])
 
-const getLegendaryCard = async () => await Card.aggregate([{ $match: { type: "legendary" } }, { $sample: { size: 1 } }])
+const getLegendaryCard = async () => await Card.aggregate([{ $match: { type: 3 } }, { $sample: { size: 1 } }])
 
-const getEpicCard = async () => await Card.aggregate([{ $match: { type: "epic" } }, { $sample: { size: 1 } }])
+const getEpicCard = async () => await Card.aggregate([{ $match: { type: 2 } }, { $sample: { size: 1 } }])
 
-const getRareCard = async () => await Card.aggregate([{ $match: { type: "rare" } }, { $sample: { size: 1 } }])
+const getRareCard = async () => await Card.aggregate([{ $match: { type: 1 } }, { $sample: { size: 1 } }])
 
-const getCommonCard = async () => await Card.aggregate([{ $match: { type: "common" } }, { $sample: { size: 1 } }])
+const getCommonCard = async () => await Card.aggregate([{ $match: { type: 0 } }, { $sample: { size: 1 } }])
 
 const getCard = async (id) => await Card.findById(id)
 
