@@ -33,7 +33,6 @@ const deleteUser = async (id) => await User.findByIdAndDelete(id)
 
 const addCard = async (discordId, cardId) => {
     const user = await getUser(discordId)
-    console.log(user)
     user.cards.push(cardId)
     return await user.save()
 }
@@ -86,7 +85,6 @@ const getUserWithNumberOfCards = async (discordId) => {
 }
 
 const getUserCardByName = async (discordId, cardName) => {
-    console.log(discordId, cardName)
     const user = await User.findOne({ discordId: discordId }).populate('cards')
     const card = user.cards.find(card => card.name === cardName)
     if(!card) throw new Error('Card not found in your collection')
