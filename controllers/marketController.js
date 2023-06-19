@@ -42,27 +42,23 @@ const addOffer = async (req, res) => {
 const buyOffer = async (req, res) => {
     try {
         let user = await userService.getUser(req.body.discordId)
-        const offer = await marketService.buyOffer(req.params.marketId, req.params.offerId, user._id)
+        const offer = await marketService.getMarketOffer(req.params.marketId, req.params.offerId)
+
         if (!user) {
             user = await userService.createUser({discordId: req.body.discordId, username: req.body.username})
         }
         if (!offer) {
             return res.status(404).json({error: "Offer not found"})
         }
-        if (offer.seller === user._id) {
-            return res.status(400).json({error: "You can't buy your own offer"})
-        }
         if (offer.price > user.balance) {
             return res.status(400).json({error: "You don't have enough money"})
         }
-        if (!offer.active) {
-            return res.status(400).json({error: "This offer is no longer available"})
-        }
 
-        await userService.addCard(req.body.discordId, offer.cardId)
-        await userService.removeBalance(req.body.discordId, offer.price)
-        await userService.addBalanceWithId(offer.seller, offer.price)
-        res.status(200).json(offer)
+        const buyedOffer = await marketService.buyOffer(req.params.marketId, req.params.offerId, user._id)
+        await userService.addCard(req.body.discordId, buyedOffer.cardId)
+        await userService.removeBalance(req.body.discordId, buyedOffer.price)
+        await userService.addBalanceWithId(buyedOffer.seller, buyedOffer.price)
+        res.status(200).json(buyedOffer)
     } catch (error) {
         console.log("error --- ",error)
         res.status(500).json({error: error.message})
