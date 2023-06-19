@@ -29,8 +29,6 @@ const marketSchema = new Schema(
     }
 )
 
-offerSchema.index({ createdAt: 1 }, { expireAfterSeconds: 5, partialFilterExpression: { active: false } });
-
 const Market = model('Market', marketSchema)
 
 export { Market }
