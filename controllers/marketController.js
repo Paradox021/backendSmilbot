@@ -24,7 +24,6 @@ const addOffer = async (req, res) => {
         }
         
         await marketService.addOffer(req.params.marketId, offer)
-        console.log(offer)
         await userService.removeCard(discordId, offer.cardId)
         res.status(200).json(offer)
     } catch (error) {
@@ -37,7 +36,6 @@ const buyOffer = async (req, res) => {
     try {
         const user = await userService.getUser(req.body.discordId)
         const offer = await marketService.buyOffer(req.params.marketId, req.params.offerId, user._id)
-        console.log(offer)
         await userService.addCard(req.body.discordId, offer.cardId)
         await userService.removeBalance(req.body.discordId, offer.price)
         await userService.addBalanceWithId(offer.seller, offer.price)

@@ -72,7 +72,6 @@ const addBalance = async (req, res) => {
 
 const removeBalance = async (req, res) => {
     try {
-        console.log(req.params.id, req.params.balance)
         const user = await userService.removeBalance(req.params.id, req.params.amount)
         res.status(200).json(user)
     } catch (error) {

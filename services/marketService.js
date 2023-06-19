@@ -35,7 +35,6 @@ const buyOffer = async (marketId, offerId, buyerId) => {
 const removeOffer = async (marketId, offerId, userId) => {
     const market = await Market.find({discordId:marketId})
     const offer = market[0].offers.id(offerId)
-    console.log(offer)
     if(!offer) throw new Error('Offer not found')
     if(offer.seller.toString() != userId.toString()) throw new Error('You can\'t remove an offer that is not yours!')
     if(offer.active == false) throw new Error('Offer is not active')
