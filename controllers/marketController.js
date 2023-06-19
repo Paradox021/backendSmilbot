@@ -15,7 +15,14 @@ const addOffer = async (req, res) => {
     try {
         const cardName = req.body.cardName
         const discordId = req.body.discordId
+        let user = await userService.getUser(discordId)
+        if (!user) {
+            user = await userService.createUser({discordId: discordId, username: req.body.username})
+        }
         const { card, userId } = await userService.getUserCardByName(discordId, cardName)
+        if (!card) {
+            return res.status(404).json({error: "Card not found"})
+        }
         const offer = {
             cardId: card._id,
             price: req.body.price,
@@ -34,8 +41,11 @@ const addOffer = async (req, res) => {
 
 const buyOffer = async (req, res) => {
     try {
-        const user = await userService.getUser(req.body.discordId)
+        let user = await userService.getUser(req.body.discordId)
         const offer = await marketService.buyOffer(req.params.marketId, req.params.offerId, user._id)
+        if (!user) {
+            user = await userService.createUser({discordId: req.body.discordId, username: req.body.username})
+        }
         if (!offer) {
             return res.status(404).json({error: "Offer not found"})
         }
@@ -61,10 +71,23 @@ const buyOffer = async (req, res) => {
 
 const removeOffer = async (req, res) => {
     try {
-        const user = await userService.getUser(req.body.discordId)
-        const offer = await marketService.removeOffer(req.params.marketId, req.params.offerId, user._id)
-        await userService.addCard(req.body.discordId, offer.cardId)
-        res.status(200).json(offer)
+        let user = await userService.getUser(req.body.discordId)
+        if (!user) {
+            user = await userService.createUser({discordId: req.body.discordId, username: req.body.username})
+        }
+        const offer = await marketService.getMarketOffer(req.params.marketId, req.params.offerId)
+        if (!offer) {
+            return res.status(404).json({error: "Offer not found"})
+        }
+        if(offer.seller !== user._id) {
+            return res.status(400).json({error: "You can't remove this offer"})
+        }
+        if (!offer.active) {
+            return res.status(400).json({error: "This offer is no longer available"})
+        }
+        const removedOffer = await marketService.removeOffer(req.params.marketId, req.params.offerId, user._id)
+        await userService.addCard(req.body.discordId, removedOffer.cardId)
+        res.status(200).json(removedOffer)
     } catch (error) {
         res.status(500).json({error: error.message})
     }
