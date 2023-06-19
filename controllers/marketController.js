@@ -36,6 +36,19 @@ const buyOffer = async (req, res) => {
     try {
         const user = await userService.getUser(req.body.discordId)
         const offer = await marketService.buyOffer(req.params.marketId, req.params.offerId, user._id)
+        if (!offer) {
+            return res.status(404).json({error: "Offer not found"})
+        }
+        if (offer.seller === user._id) {
+            return res.status(400).json({error: "You can't buy your own offer"})
+        }
+        if (offer.price > user.balance) {
+            return res.status(400).json({error: "You don't have enough money"})
+        }
+        if (!offer.active) {
+            return res.status(400).json({error: "This offer is no longer available"})
+        }
+
         await userService.addCard(req.body.discordId, offer.cardId)
         await userService.removeBalance(req.body.discordId, offer.price)
         await userService.addBalanceWithId(offer.seller, offer.price)
