@@ -2,9 +2,10 @@
 
 import { Market } from '../models/market.js'
 
+// devuelve la oferta con del mercado con el id de la oferta
 const getMarketOffer = async (marketId, offerId) => {
     const market = await Market.find({discordId:marketId})
-    return market.offers.id(offerId)
+    return market[0].offers.id(offerId)
 }
 
 const getAllMarketOffers = async (marketId) => {
