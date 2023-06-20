@@ -25,7 +25,7 @@ const addOffer = async (req, res) => {
         }
         const market = await marketService.getMarket(req.params.marketId)
         if (!market) {
-            await marketService.createMarket(req.params.marketId)
+            await marketService.createMarket({discordId: req.params.marketId})
         }
         const { card, userId } = await userService.getUserCardByName(discordId, cardName)
         if (!card) {
@@ -57,7 +57,7 @@ const buyOffer = async (req, res) => {
         }
         const market = await marketService.getMarket(req.params.marketId)
         if (!market) {
-            await marketService.createMarket(req.params.marketId)
+            await marketService.createMarket({discordId: req.params.marketId})
         }
         if (!offer) {
             return res.status(404).json({error: "Offer not found"})
@@ -85,7 +85,7 @@ const removeOffer = async (req, res) => {
         }
         const market = await marketService.getMarket(req.params.marketId)
         if (!market) {
-            await marketService.createMarket(req.params.marketId)
+            await marketService.createMarket({discordId: req.params.marketId})
         }
         const removedOffer = await marketService.removeOffer(req.params.marketId, req.params.offerId, user._id)
         await userService.addCard(req.body.discordId, removedOffer.cardId)
