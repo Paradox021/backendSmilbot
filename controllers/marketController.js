@@ -6,7 +6,7 @@ const getAllMarketOffers = async (req, res) => {
     try {
         const market = await marketService.getMarket(req.params.marketId)
         if (!market) {
-            await marketService.createMarket(req.params.marketId)
+            await marketService.createMarket({discordId: req.params.marketId})
         }
         const offers = await marketService.getAllMarketOffers(req.params.marketId)
         res.status(200).json(offers)
