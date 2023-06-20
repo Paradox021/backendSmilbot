@@ -2,14 +2,25 @@
 
 import { Market } from '../models/market.js'
 
-// devuelve la oferta con del mercado con el id de la oferta
+const createMarket = async (market) => {
+    const newMarket = new Market(market)
+    return await newMarket.save()
+}
+// get market by discordId
+const getMarket = async (marketId) => {
+    const market = await Market.find({discordId:marketId})
+    if(market.length == 0) return null
+    return market[0]
+}
+
+
 const getMarketOffer = async (marketId, offerId) => {
     const market = await Market.find({discordId:marketId})
     return market[0].offers.id(offerId)
 }
 
 const getAllMarketOffers = async (marketId) => {
-    const market = await Market.find({discordId:marketId}).populate('offers.cardId')
+    const market = await Market.find({discordId:marketId}).populate('offers.cardId').populate('offers.seller')
     if(market.length == 0) return []
     const activeOffers = market[0].offers.filter(offer => offer.active == true)
     if(!market) return []
@@ -44,4 +55,4 @@ const removeOffer = async (marketId, offerId, userId) => {
     return offer
 }
 
-export { getMarketOffer, addOffer, buyOffer, removeOffer, getAllMarketOffers }
+export { getMarketOffer, addOffer, buyOffer, removeOffer, getAllMarketOffers, createMarket, getMarket}

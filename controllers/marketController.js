@@ -4,6 +4,10 @@ import * as userService from '../services/userService.js'
 
 const getAllMarketOffers = async (req, res) => {
     try {
+        const market = await marketService.getMarket(req.params.marketId)
+        if (!market) {
+            await marketService.createMarket(req.params.marketId)
+        }
         const offers = await marketService.getAllMarketOffers(req.params.marketId)
         res.status(200).json(offers)
     } catch (error) {
@@ -18,6 +22,10 @@ const addOffer = async (req, res) => {
         let user = await userService.getUser(discordId)
         if (!user) {
             user = await userService.createUser({discordId: discordId, username: req.body.username})
+        }
+        const market = await marketService.getMarket(req.params.marketId)
+        if (!market) {
+            await marketService.createMarket(req.params.marketId)
         }
         const { card, userId } = await userService.getUserCardByName(discordId, cardName)
         if (!card) {
@@ -47,6 +55,10 @@ const buyOffer = async (req, res) => {
         if (!user) {
             user = await userService.createUser({discordId: req.body.discordId, username: req.body.username})
         }
+        const market = await marketService.getMarket(req.params.marketId)
+        if (!market) {
+            await marketService.createMarket(req.params.marketId)
+        }
         if (!offer) {
             return res.status(404).json({error: "Offer not found"})
         }
@@ -70,6 +82,10 @@ const removeOffer = async (req, res) => {
         let user = await userService.getUser(req.body.discordId)
         if (!user) {
             user = await userService.createUser({discordId: req.body.discordId, username: req.body.username})
+        }
+        const market = await marketService.getMarket(req.params.marketId)
+        if (!market) {
+            await marketService.createMarket(req.params.marketId)
         }
         const removedOffer = await marketService.removeOffer(req.params.marketId, req.params.offerId, user._id)
         await userService.addCard(req.body.discordId, removedOffer.cardId)
