@@ -1,4 +1,4 @@
-import authService from '../services/authService.js';
+import * as authService from '../services/authService.js';
 
 
 const discordAuth = async (req, res) => {
