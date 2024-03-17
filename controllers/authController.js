@@ -10,4 +10,12 @@ const discordAuth = async (req, res) => {
     }
 }
 
-export { discordAuth }
+const discordAuthCallback = async (req, res) => {
+    try {
+        // TODO: Implement the discordAuthCallback function
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+export { discordAuth, discordAuthCallback }
