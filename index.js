@@ -6,6 +6,7 @@ import cors from 'cors'
 import cardRouter from './routers/cardRouter.js'
 import userRouter from './routers/userRouter.js'
 import marketRouter from './routers/marketRouter.js'
+import authRouter from './routers/authRouter.js'
 import path from 'path'
 
 const __dirname = path.resolve()
@@ -27,6 +28,7 @@ app.use('/public', express.static(`${__dirname}/storage/images`))
 app.use('/card', cardRouter)
 app.use('/user', userRouter)
 app.use('/market', marketRouter)
+app.use('/auth', authRouter)
 
 
 async function main(){
