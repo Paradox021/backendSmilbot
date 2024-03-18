@@ -55,15 +55,19 @@ const discordAuthCallback = async (req, res) => {
 
       // Devuelve los tokens al cliente y luego redirige a la página de inicio del front-end
       res.cookie("accessToken", 
-      { 
-        access_token: tokenResponse.data.access_token,
-        refresh_token: tokenResponse.data.refresh_token,
-      }, 
+      tokenResponse.data.access_token, 
       {
         httpOnly: true,
         secure: true,
         sameSite: "none", 
       });
+      res.cookie("refreshToken",
+        tokenResponse.data.refresh_token,
+        {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+        });
       res.redirect(`${process.env.FRONTEND_URL}/home`);
       //res.status(200).json({ user });
     } catch (error) {
