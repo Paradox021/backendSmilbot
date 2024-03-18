@@ -53,8 +53,19 @@ const discordAuthCallback = async (req, res) => {
       // Procesa o almacena la información del usuario según sea necesario
       // Por ejemplo, podrías crear una sesión de usuario o un registro en tu base de datos
 
-      // Redirige al usuario a una página de éxito o su perfil
-      res.status(200).json({ user });
+      // Devuelve los tokens al cliente y luego redirige a la página de inicio del front-end
+      res.cookie("accessToken", 
+      { 
+        access_token: tokenResponse.data.access_token,
+        refresh_token: tokenResponse.data.refresh_token,
+      }, 
+      {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none", 
+      });
+      res.redirect(`${process.env.FRONTEND_URL}/home`);
+      //res.status(200).json({ user });
     } catch (error) {
       console.error(
         "Error al intercambiar el código por un token de acceso o al obtener la información del usuario:",
@@ -75,7 +86,7 @@ const refreshToken = async (req, res) => {
             client_id: process.env.DISCORD_CLIENT_ID,
             client_secret: process.env.DISCORD_CLIENT_SECRET,
             grant_type: 'refresh_token',
-            refresh_token: refreshToken,
+            refresh_token: refreshToken, 
             redirect_uri: process.env.DISCORD_REDIRECT_URI,
             scope: 'identify email' // Asegúrate de usar el mismo scope que en la autenticación inicial
         };
