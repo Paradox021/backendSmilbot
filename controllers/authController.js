@@ -67,4 +67,40 @@ const discordAuthCallback = async (req, res) => {
   }
 };
 
-export { discordAuth, discordAuthCallback };
+const refreshToken = async (req, res) => {
+    try {
+        const refreshToken = req.body.refreshToken;
+        // Datos necesarios para la petición de refresh token
+        const data = {
+            client_id: process.env.DISCORD_CLIENT_ID,
+            client_secret: process.env.DISCORD_CLIENT_SECRET,
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            redirect_uri: process.env.DISCORD_REDIRECT_URI,
+            scope: 'identify email' // Asegúrate de usar el mismo scope que en la autenticación inicial
+        };
+
+        // Hacer la petición de refresh token a Discord
+        const response = await axios.post(
+            'https://discord.com/api/oauth2/token',
+            new URLSearchParams(data).toString(), // Discord espera los datos como x-www-form-urlencoded
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            }
+        );
+
+        // Aquí manejas la respuesta, que incluirá un nuevo access_token y refresh_token
+        console.log('Nuevos tokens:', response.data);
+
+        // Responde al cliente, posiblemente con los nuevos tokens o un mensaje de éxito
+        res.status(200).json({ message: 'Token refrescado con éxito', ...response.data });
+    } catch (error) {
+        console.error('Error al refrescar el token:', error.response.data);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+
+export { discordAuth, discordAuthCallback, refreshToken };
