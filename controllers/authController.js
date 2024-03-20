@@ -50,26 +50,43 @@ const discordAuthCallback = async (req, res) => {
       const user = userResponse.data;
       console.log("usuario: ",user);
 
-      // Procesa o almacena la información del usuario según sea necesario
-      // Por ejemplo, podrías crear una sesión de usuario o un registro en tu base de datos
+      const jwtAccesToken = await authService.generateToken({
+        discordId: user.id,
+      }, false);
+
+      const jwtRefreshToken = await authService.generateToken({
+        discordId: user.id,
+      }, true);
 
       // Devuelve los tokens al cliente y luego redirige a la página de inicio del front-end
       res.cookie("accessToken", 
-      tokenResponse.data.access_token, 
-      {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none", 
-      });
+        jwtAccesToken, 
+        {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none", 
+        });
       res.cookie("refreshToken",
-        tokenResponse.data.refresh_token,
+        jwtRefreshToken,
         {
             httpOnly: true,
             secure: true,
             sameSite: "none",
         });
+      res.cookie("user",
+        JSON.stringify({
+            discordId: user.id,
+            username: user.username,
+            avatar: user.avatar,
+        }),
+        {
+            httpOnly: false,
+            secure: true,
+            sameSite: "none",
+        });
+
       res.redirect(`${process.env.FRONTEND_URL}/home`);
-      //res.status(200).json({ user });
+
     } catch (error) {
       console.error(
         "Error al intercambiar el código por un token de acceso o al obtener la información del usuario:",
