@@ -1,18 +1,29 @@
 // service for card
 
 import { Card } from '../models/card.js'
+import crypto from 'crypto'
 
 const getCards = async () => await Card.find().sort({type:1})
 
-const getMythicCard = async () => await Card.aggregate([{ $match: { type: 4 } }, { $sample: { size: 1 } }])
+const getRandomTypeCard = async (type) => {
+    const cards = await Card.find({ type: type })
+    
+    if (cards.length === 0) 
+        throw new Error('No cards found for this type');
+    
+    const randomIndex = crypto.randomInt(0, cards.length)
+    return cards[randomIndex]
+}
 
-const getLegendaryCard = async () => await Card.aggregate([{ $match: { type: 3 } }, { $sample: { size: 1 } }])
+const getMythicCard = async () => await getRandomTypeCard(4)
 
-const getEpicCard = async () => await Card.aggregate([{ $match: { type: 2 } }, { $sample: { size: 1 } }])
+const getLegendaryCard = async () => await getRandomTypeCard(3)
 
-const getRareCard = async () => await Card.aggregate([{ $match: { type: 1 } }, { $sample: { size: 1 } }])
+const getEpicCard = async () => await getRandomTypeCard(2)
 
-const getCommonCard = async () => await Card.aggregate([{ $match: { type: 0 } }, { $sample: { size: 1 } }])
+const getRareCard = async () => await getRandomTypeCard(1)
+
+const getCommonCard = async () => await getRandomTypeCard(0)
 
 const getCard = async (id) => await Card.findById(id)
 
