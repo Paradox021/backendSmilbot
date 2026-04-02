@@ -62,7 +62,12 @@ async function migrate() {
         // Extract filename from the old URL
         // Old format: http://host/public/filename.png
         const oldUrl = card.imageUrl || ''
-        const filename = oldUrl.split('/public/').pop()
+        let filename = oldUrl.split('/public/').pop()
+
+        // Si tiene ? en el nombre, eliminarlo
+        if (filename.includes('?')) {
+            filename = filename.split('?')[0]
+        }
 
         if (!filename) {
             console.log(`⚠️  "${card.name}" — no image URL found, skipping`)
