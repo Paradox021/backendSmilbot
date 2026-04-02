@@ -27,13 +27,17 @@ const getCommonCard = async () => await getRandomTypeCard(0)
 
 const getCard = async (id) => await Card.findById(id)
 
-const createCard = async (card) => {
-    const newCard = new Card(card)
-    newCard.setImgUrl(card.imageUrl)
+const createCard = async (cardData) => {
+    const newCard = new Card(cardData)
     return await newCard.save()
 }
 
-const deleteCard = async (id) => await Card.findByIdAndDelete(id)
+const deleteCard = async (id) => {
+    const card = await Card.findById(id)
+    if (!card) throw new Error('Card not found')
+    await Card.findByIdAndDelete(id)
+    return card
+}
 
 export { getCards, getMythicCard, getLegendaryCard, getEpicCard,
     getRareCard, getCommonCard, getCard, createCard, deleteCard }

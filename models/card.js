@@ -1,9 +1,6 @@
 // model for card
 
 import { Schema, model } from 'mongoose'
-import * as dotenv from 'dotenv'
-
-dotenv.config()
 
 const cardSchema = new Schema(
     {
@@ -12,6 +9,7 @@ const cardSchema = new Schema(
         description: {type:String, required:true, trim:true},
         type: {type:Number, required:true}, // 0 for common, 1 for rare, 2 for epic, 3 for legendary and 4 for mythic
         imageUrl: String,
+        imagePublicId: String, // Provider-specific ID used for deletion
         author: String,
     },
     {
@@ -20,13 +18,6 @@ const cardSchema = new Schema(
     }
 )
 
-cardSchema.methods.setImgUrl = function setImgUrl(filename){
-    const { PORT, IMAGE_HOST } = process.env
-    this.imageUrl = `${IMAGE_HOST}/public/${filename}`
-}
-
 const Card = model('Card', cardSchema)
-
-
 
 export { Card }

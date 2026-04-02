@@ -21,9 +21,12 @@ app.get('/', (req, res) => {
     res.status(200).send('Bienvenido al API de Smilbot')
 })
 
+// Serve local images only when using the local provider
+const provider = (process.env.IMAGE_PROVIDER || 'local').toLowerCase()
+if (provider === 'local') {
+    app.use('/public', express.static(`${__dirname}/storage/images`))
+}
 
-
-app.use('/public', express.static(`${__dirname}/storage/images`))
 app.use('/card', cardRouter)
 app.use('/user', userRouter)
 app.use('/market', marketRouter)

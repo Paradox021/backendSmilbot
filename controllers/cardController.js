@@ -1,6 +1,7 @@
 // controller for card
 
 import * as cardService from '../services/cardService.js'
+import { imageService } from '../libs/imageHosting/index.js'
 
 const cardTypes = {
     common: 0,
@@ -76,8 +77,13 @@ const getCard = async (req, res) => {
 const createCard = async (req, res) => {
     try {
         const cardData = JSON.parse(req.body.data)
-        cardData.imageUrl = req.file.filename
         cardData.type = cardTypes[cardData.type]
+
+        // Upload image to the configured provider
+        const { url, publicId } = await imageService.upload(req.file)
+        cardData.imageUrl = url
+        cardData.imagePublicId = publicId
+
         const card = await cardService.createCard(cardData)
         res.status(201).json(card)
     } catch (error) {
@@ -88,6 +94,12 @@ const createCard = async (req, res) => {
 const deleteCard = async (req, res) => {
     try {
         const card = await cardService.deleteCard(req.params.id)
+
+        // Delete image from the provider
+        if (card.imagePublicId) {
+            await imageService.delete(card.imagePublicId)
+        }
+
         res.status(200).json(card)
     } catch (error) {
         res.status(500).json({error: error.message})
