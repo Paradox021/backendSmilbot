@@ -28,8 +28,11 @@ const getUser = async (req, res) => {
 const createUser = async (req, res) => {
     try {
         const user = await userService.createUser(req.body)
-        res.status(200).json(user)
+        res.status(201).json(user)
     } catch (error) {
+        if (error.code === 'USER_ALREADY_EXISTS') {
+            return res.status(409).json({ error: error.message })
+        }
         res.status(500).json({ error: error.message })
     }
 }

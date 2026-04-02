@@ -7,9 +7,14 @@ const getUsers = async () => await User.find()
 const getUser = async (discordId) => await User.findOne({ discordId: discordId })
 
 const createUser = async (user) => { 
+    const existingUser = await User.findOne({ discordId: user.discordId })
+    if (existingUser) {
+        const error = new Error('Ya existe un usuario con ese discordId')
+        error.code = 'USER_ALREADY_EXISTS'
+        throw error
+    }
     const newUser = new User(user)
     return await newUser.save()
-    
 }
 // devuelve el usuario con las cartas que tiene añadiendo el campo count a cada carta con el numero de esa carta que tiene
 const getUserCards = async (discordId) => {
