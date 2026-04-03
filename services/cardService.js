@@ -27,6 +27,21 @@ const getCommonCard = async () => await getRandomTypeCard(0)
 
 const getCard = async (id) => await Card.findById(id)
 
+// Probabilidades acumuladas sobre 1000 (cada umbral incluye los anteriores)
+const CARD_TIERS = [
+    { maxRoll: 5,    type: 4 },  // Mythic    — 0.5%
+    { maxRoll: 25,   type: 3 },  // Legendary — 2%
+    { maxRoll: 125,  type: 2 },  // Epic      — 10%
+    { maxRoll: 425,  type: 1 },  // Rare      — 30%
+    { maxRoll: 1000, type: 0 },  // Common    — 57.5%
+]
+
+const getRandomCard = async () => {
+    const roll = crypto.randomInt(0, 1000)
+    const tier = CARD_TIERS.find(t => roll < t.maxRoll)
+    return await getRandomTypeCard(tier.type)
+}
+
 const createCard = async (cardData) => {
     const newCard = new Card(cardData)
     return await newCard.save()
@@ -40,4 +55,4 @@ const deleteCard = async (id) => {
 }
 
 export { getCards, getMythicCard, getLegendaryCard, getEpicCard,
-    getRareCard, getCommonCard, getCard, createCard, deleteCard }
+    getRareCard, getCommonCard, getCard, getRandomCard, createCard, deleteCard }

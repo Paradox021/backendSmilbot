@@ -16,5 +16,6 @@ userRouter.post('/:id/balance/:amount', userController.addBalance)
 userRouter.delete('/:id/balance/:amount', userController.removeBalance)
 userRouter.get('/:id/cards', userController.getUserWithCards)
 userRouter.get('/:id/cards/number', userController.getUserWithNumberOfCards)
+userRouter.post('/:id/card/random', userController.rollRandomCard)
 
 export default userRouter

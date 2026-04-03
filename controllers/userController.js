@@ -1,6 +1,7 @@
 // controller for user
 
 import * as userService from '../services/userService.js'
+import * as cardService from '../services/cardService.js'
 
 const getUsers = async (req, res) => {
     try {
@@ -114,5 +115,25 @@ const getUserWithNumberOfCards = async (req, res) => {
     }
 }
 
+const ROLL_COST = 100
 
-export { getUsers, getUser, createUser, deleteUser, addCard, removeCard, addBalance, removeBalance, dailyBalance, getUserWithCards, getUserWithNumberOfCards}
+const rollRandomCard = async (req, res) => {
+    try {
+        const user = await userService.getUser(req.params.id)
+        if (!user) return res.status(404).json({ error: 'Usuario no encontrado' })
+
+        if (user.balance < ROLL_COST) {
+            return res.status(400).json({ error: `No tienes suficientes monedas. Necesitas ${ROLL_COST} y tienes ${user.balance}` })
+        }
+
+        const card = await cardService.getRandomCard()
+        await userService.addCard(user.discordId, card._id)
+        await userService.removeBalance(user.discordId, ROLL_COST)
+
+        res.status(200).json(card)
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+}
+
+export { getUsers, getUser, createUser, deleteUser, addCard, removeCard, addBalance, removeBalance, dailyBalance, getUserWithCards, getUserWithNumberOfCards, rollRandomCard }
