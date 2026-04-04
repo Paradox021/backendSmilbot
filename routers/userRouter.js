@@ -6,7 +6,8 @@ import * as userController from '../controllers/userController.js'
 const userRouter = Router()
 
 userRouter.get('/', userController.getUsers)
-userRouter.post('/id', userController.getUser)
+
+userRouter.post('/id', userController.getUserWithBody)
 userRouter.post('/', userController.createUser)
 userRouter.delete('/:id', userController.deleteUser)
 userRouter.post('/:id/dailyBalance', userController.dailyBalance)
@@ -20,4 +21,5 @@ userRouter.post('/:id/card/random', userController.rollRandomCard)
 
 userRouter.post('/:id/card/:cardId', userController.addCard)
 
+userRouter.get('/:id', userController.getUser)
 export default userRouter

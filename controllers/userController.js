@@ -12,7 +12,7 @@ const getUsers = async (req, res) => {
     }
 }
 
-const getUser = async (req, res) => {
+const getUserWithBody = async (req, res) => {
     try {
         const auxUser = req.body
         const user = await userService.getUser(auxUser.discordId)
@@ -20,6 +20,15 @@ const getUser = async (req, res) => {
             const newUser = await userService.createUser(auxUser)
             return res.status(200).json(newUser)
         }
+        res.status(200).json(user)
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+}
+
+const getUser = async (req, res) => {
+    try {
+        const user = await userService.getUser(req.params.id)
         res.status(200).json(user)
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -136,4 +145,4 @@ const rollRandomCard = async (req, res) => {
     }
 }
 
-export { getUsers, getUser, createUser, deleteUser, addCard, removeCard, addBalance, removeBalance, dailyBalance, getUserWithCards, getUserWithNumberOfCards, rollRandomCard }
+export { getUsers, getUserWithBody, getUser, createUser, deleteUser, addCard, removeCard, addBalance, removeBalance, dailyBalance, getUserWithCards, getUserWithNumberOfCards, rollRandomCard }
