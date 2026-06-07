@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+.env
+.git
+storage/images/*
+!storage/images/.gitkeep
+.vscode
+.idea
+Dockerfile
+docker-compose.yml

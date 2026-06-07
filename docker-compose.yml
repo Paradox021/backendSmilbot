@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    container_name: smilbot-backend
+    restart: always
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    env_file:
+      - .env
+    volumes:
+      - app-storage:/usr/src/app/storage/images
+
+volumes:
+  app-storage:
