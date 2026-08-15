@@ -6,6 +6,7 @@ import cors from 'cors'
 import cardRouter from './routers/cardRouter.js'
 import userRouter from './routers/userRouter.js'
 import marketRouter from './routers/marketRouter.js'
+import leaderboardRouter from './routers/leaderboardRouter.js'
 import path from 'path'
 
 const __dirname = path.resolve()
@@ -30,6 +31,7 @@ if (provider === 'local') {
 app.use('/card', cardRouter)
 app.use('/user', userRouter)
 app.use('/market', marketRouter)
+app.use('/leaderboard', leaderboardRouter)
 
 
 async function main(){

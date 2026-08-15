@@ -2,6 +2,7 @@
 
 import * as userService from '../services/userService.js'
 import * as cardService from '../services/cardService.js'
+import * as transactionService from '../services/transactionService.js'
 
 const getUsers = async (req, res) => {
     try {
@@ -29,6 +30,9 @@ const getUserWithBody = async (req, res) => {
 const getUser = async (req, res) => {
     try {
         const user = await userService.getUser(req.params.id)
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' })
+        }
         res.status(200).json(user)
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -94,12 +98,16 @@ const removeBalance = async (req, res) => {
 
 const dailyBalance = async (req, res) => {
     try {
-        const user = await userService.getUser(req.params.id)
-        const { diffHours, diffMinutes } = user.getTimeToUseCommand()
-        if (!user.canUseCommand()) return res.status(500).json({ error: `You can't use this command yet\nYou have to wait ${diffHours} hours and ${diffMinutes} minutes to use it again!` })
-        const userUpdated = await userService.dailyBalance(req.params.id, 100)
-        return res.status(200).json(userUpdated)
+        const result = await userService.dailyBalance(req.params.id, 100)
+        return res.status(200).json(result)
     } catch (error) {
+        if (error.code === 'COOLDOWN_ACTIVE') {
+            return res.status(400).json({
+                error: error.message,
+                diffHours: error.diffHours,
+                diffMinutes: error.diffMinutes
+            })
+        }
         res.status(500).json({ error: error.message })
     }
 }
@@ -107,6 +115,9 @@ const dailyBalance = async (req, res) => {
 const getUserWithCards = async (req, res) => {
     try {
         const user = await userService.getUser(req.params.id)
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' })
+        }
         const userWithCards = await userService.getUserCards(user.discordId)
         res.status(200).json(userWithCards)
     } catch (error) {
@@ -117,6 +128,9 @@ const getUserWithCards = async (req, res) => {
 const getUserWithNumberOfCards = async (req, res) => {
     try {
         const user = await userService.getUser(req.params.id)
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' })
+        }
         const userWithCards = await userService.getUserWithNumberOfCards(user.discordId)
         res.status(200).json(userWithCards)
     } catch (error) {
@@ -135,14 +149,65 @@ const rollRandomCard = async (req, res) => {
             return res.status(400).json({ error: `No tienes suficientes monedas. Necesitas ${ROLL_COST} y tienes ${user.balance}` })
         }
 
-        const card = await cardService.getRandomCard()
-        await userService.addCard(user.discordId, card._id)
-        await userService.removeBalance(user.discordId, ROLL_COST)
+        const { card, roll } = await cardService.getRandomCard()
+        await userService.rollRandomCardPurchase(user.discordId, card, ROLL_COST, roll)
 
-        res.status(200).json(card)
+        // Devolver la carta incluyendo el número de roll obtenido
+        const cardObj = typeof card.toObject === 'function' ? card.toObject() : card
+        res.status(200).json({
+            ...cardObj,
+            roll
+        })
+    } catch (error) {
+        if (error.code === 'INSUFFICIENT_BALANCE') {
+            return res.status(400).json({ error: error.message })
+        }
+        res.status(500).json({ error: error.message })
+    }
+}
+
+const getUserStats = async (req, res) => {
+    try {
+        const stats = await userService.getUserStats(req.params.id)
+        if (!stats) {
+            return res.status(404).json({ error: 'Usuario no encontrado' })
+        }
+        res.status(200).json(stats)
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
 }
 
-export { getUsers, getUserWithBody, getUser, createUser, deleteUser, addCard, removeCard, addBalance, removeBalance, dailyBalance, getUserWithCards, getUserWithNumberOfCards, rollRandomCard }
+const getUserTransactions = async (req, res) => {
+    try {
+        const user = await userService.getUser(req.params.id)
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' })
+        }
+        const result = await transactionService.getUserTransactions(user.discordId, {
+            page: req.query.page,
+            limit: req.query.limit
+        })
+        res.status(200).json(result)
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+}
+
+export {
+    getUsers,
+    getUserWithBody,
+    getUser,
+    createUser,
+    deleteUser,
+    addCard,
+    removeCard,
+    addBalance,
+    removeBalance,
+    dailyBalance,
+    getUserWithCards,
+    getUserWithNumberOfCards,
+    rollRandomCard,
+    getUserStats,
+    getUserTransactions
+}

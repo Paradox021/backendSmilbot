@@ -2,6 +2,8 @@
 
 import { Schema, model } from 'mongoose'
 
+export const MARKET_OFFER_STATUSES = ['ACTIVE', 'SOLD', 'CANCELLED']
+
 const offerSchema = new Schema(
     {
         _id: {type:Schema.ObjectId, auto:true},
@@ -9,6 +11,15 @@ const offerSchema = new Schema(
         price: {type:Number, required:true},
         seller: {type:Schema.ObjectId, ref:'User'},
         buyer: {type:Schema.ObjectId, ref:'User', required:false},
+        buyerDiscordId: {type:String, default:null},
+        soldPrice: {type:Number, default:null},
+        soldAt: {type:Date, default:null},
+        cancelledAt: {type:Date, default:null},
+        status: {
+            type: String,
+            enum: MARKET_OFFER_STATUSES,
+            default: 'ACTIVE'
+        },
         active: {type:Boolean, default:true}
     },
     {

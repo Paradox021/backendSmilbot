@@ -39,7 +39,8 @@ const CARD_TIERS = [
 const getRandomCard = async () => {
     const roll = crypto.randomInt(0, 1000)
     const tier = CARD_TIERS.find(t => roll < t.maxRoll)
-    return await getRandomTypeCard(tier.type)
+    const card = await getRandomTypeCard(tier.type)
+    return { card, roll }
 }
 
 const createCard = async (cardData) => {

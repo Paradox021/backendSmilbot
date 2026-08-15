@@ -21,5 +21,9 @@ userRouter.post('/:id/card/random', userController.rollRandomCard)
 
 userRouter.post('/:id/card/:cardId', userController.addCard)
 
+userRouter.get('/:id/stats', userController.getUserStats)
+userRouter.get('/:id/transactions', userController.getUserTransactions)
+
 userRouter.get('/:id', userController.getUser)
+
 export default userRouter
