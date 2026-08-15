@@ -12,12 +12,17 @@ Cada jugador de Discord está representado por un documento `User`. La economía
 ## 🗄️ 2. Modelo de Datos (`User`)
 
 ```typescript
+interface UserCard {
+  cardId: ObjectId | string;   // Referencia a la carta
+  count: number;               // Cantidad de copias en posesión (min: 0)
+}
+
 interface UserSchema {
   _id: ObjectId | string;
   discordId: string;           // ID único de usuario en Discord
   username: string;            // Nombre de usuario en Discord
   balance: number;             // Saldo actual de monedas (default: 0)
-  cards: ObjectId[];           // Array de IDs de cartas en posesión
+  cards: UserCard[];           // Subdocumentos de inventario agrupado
   lastDaily: Date;             // Última fecha de reclamo del daily
   lastTimeCommand: Date;       // Alias retrocompatible de lastDaily
 

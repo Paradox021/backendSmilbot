@@ -20,11 +20,16 @@ Este documento contiene la especificación completa para implementar el sistema 
 Extender el esquema de usuario actual con los siguientes campos:
 
 ```typescript
+interface UserCard {
+  cardId: ObjectId | string;
+  count: number;
+}
+
 interface UserSchema {
   discordId: string;
   username: string;
   balance: number;
-  cards: string[] | ObjectId[];
+  cards: UserCard[];
   lastDaily: Date | string | null;
 
   // --- NUEVOS CAMPOS ---

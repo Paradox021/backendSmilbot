@@ -1,4 +1,5 @@
 // Script para migrar y calcular estadísticas históricas de los usuarios con Snapshot de Apertura
+// y normalización de inventario a [{ cardId, count }]
 // Uso: node scripts/backfillStatsAndLedger.js [--dry-run]
 
 import mongoose from 'mongoose'
@@ -23,7 +24,7 @@ const RARITY_NAMES = {
 async function runBackfill() {
     try {
         console.log('='.repeat(70))
-        console.log(`📊 Iniciando Migración, Telemetría Histórica y Snapshot de Apertura`)
+        console.log(`📊 Iniciando Migración, Telemetría Histórica, Normalización de Inventario`)
         console.log(`   Modo: ${isDryRun ? '🔍 [DRY-RUN (Simulación sin cambios)]' : '💾 [APLICAR (Guardar en MongoDB)]'}`)
         console.log('='.repeat(70))
 
@@ -106,8 +107,8 @@ async function runBackfill() {
         console.log(`🛒 Mercados procesados. Ofertas normalizadas: ${totalOffersUpdated}`)
 
         // 3. Procesar Usuarios
-        const users = await User.find()
-        console.log(`👥 Analizando ${users.length} usuarios y generando snapshots...\n`)
+        const users = await User.find().lean()
+        console.log(`👥 Analizando ${users.length} usuarios y normalizando inventarios...\n`)
 
         const summary = []
         const migrationTimestamp = new Date()
@@ -118,8 +119,29 @@ async function runBackfill() {
             const buyerData = purchasesByBuyer.get(userId) || { totalSpent: 0, count: 0 }
             const activeOffersCount = activeOffersBySeller.get(userId) || 0
 
-            const userCardsArray = user.cards || []
-            const currentCardsCount = userCardsArray.length
+            // Normalizar cartas de formato plano [ObjectId] a subdocumentos [{ cardId, count }]
+            const rawCards = user.cards || []
+            const cardCountsMap = new Map() // cardId (string) -> count (number)
+
+            for (const item of rawCards) {
+                if (!item) continue
+                let idStr
+                let count = 1
+                if (item.cardId) {
+                    idStr = item.cardId.toString()
+                    count = Number(item.count) || 1
+                } else {
+                    idStr = item.toString()
+                }
+                cardCountsMap.set(idStr, (cardCountsMap.get(idStr) || 0) + count)
+            }
+
+            const normalizedCards = Array.from(cardCountsMap.entries()).map(([cardId, count]) => ({
+                cardId,
+                count
+            }))
+
+            const currentCardsCount = Array.from(cardCountsMap.values()).reduce((sum, c) => sum + c, 0)
             const marketSalesCount = sellerData.count
             const marketEarnings = sellerData.totalEarned
             const marketSpending = buyerData.totalSpent
@@ -133,7 +155,7 @@ async function runBackfill() {
             const totalCoinsSpent = marketSpending + gachaSpending
 
             // Ganancia total = balance actual + gasto total (o al menos las ganancias de mercado)
-            const totalCoinsEarned = Math.max(user.balance + totalCoinsSpent, marketEarnings)
+            const totalCoinsEarned = Math.max((user.balance || 0) + totalCoinsSpent, marketEarnings)
 
             // Dinero obtenido por dailies
             const moneyFromDailies = Math.max(0, totalCoinsEarned - marketEarnings)
@@ -154,8 +176,7 @@ async function runBackfill() {
             }
             const maxDailyStreak = Math.max(dailyStreak, totalDailiesClaimed > 0 ? 1 : 0)
 
-            // Desglose detallado del inventario de cartas (por ID y por rareza)
-            const cardCountsMap = new Map()
+            // Desglose por rareza
             const byRarity = {
                 common: 0,
                 rare: 0,
@@ -164,31 +185,24 @@ async function runBackfill() {
                 mythic: 0
             }
 
-            for (const cId of userCardsArray) {
-                const idStr = cId.toString()
-                cardCountsMap.set(idStr, (cardCountsMap.get(idStr) || 0) + 1)
+            for (const [idStr, count] of cardCountsMap.entries()) {
                 const cType = cardTypeMap.get(idStr)
                 const rarityKey = RARITY_NAMES[cType] || 'common'
-                byRarity[rarityKey]++
+                byRarity[rarityKey] += count
             }
-
-            const cardsBreakdown = Array.from(cardCountsMap.entries()).map(([cardId, count]) => ({
-                cardId,
-                count
-            }))
 
             // Construir el Snapshot de Apertura (Genesis)
             const legacySnapshot = {
                 economy: {
-                    initialBalance: user.balance,
+                    initialBalance: user.balance || 0,
                     estimatedTotalEarned: totalCoinsEarned,
                     estimatedTotalSpent: totalCoinsSpent
                 },
                 inventory: {
                     totalCards: currentCardsCount,
-                    distinctCardsCount: cardsBreakdown.length,
+                    distinctCardsCount: normalizedCards.length,
                     byRarity,
-                    cardsBreakdown
+                    cardsBreakdown: normalizedCards
                 },
                 gacha: {
                     estimatedCardsOpened: estimatedGachaCards,
@@ -208,20 +222,22 @@ async function runBackfill() {
                 }
             }
 
-            // Actualizar campos en el modelo de usuario
-            user.dailyStreak = dailyStreak
-            user.maxDailyStreak = maxDailyStreak
-            user.totalDailiesClaimed = totalDailiesClaimed
-            user.totalCoinsEarned = totalCoinsEarned
-            user.totalCoinsSpent = totalCoinsSpent
-            user.cardsOpenedCount = estimatedGachaCards
-
-            if (!user.lastDaily && user.lastTimeCommand) {
-                user.lastDaily = user.lastTimeCommand
-            }
-
             if (!isDryRun) {
-                await user.save()
+                await User.updateOne(
+                    { _id: user._id },
+                    {
+                        $set: {
+                            cards: normalizedCards,
+                            dailyStreak,
+                            maxDailyStreak,
+                            totalDailiesClaimed,
+                            totalCoinsEarned,
+                            totalCoinsSpent,
+                            cardsOpenedCount: estimatedGachaCards,
+                            lastDaily: user.lastDaily || user.lastTimeCommand || new Date()
+                        }
+                    }
+                )
 
                 // Crear transacción inicial de apertura en el Ledger si no existe ninguna previa
                 const existingTx = await Transaction.findOne({ discordId: user.discordId })
@@ -229,9 +245,9 @@ async function runBackfill() {
                     await Transaction.create({
                         discordId: user.discordId,
                         type: 'ADMIN_ADJUST',
-                        amount: user.balance,
+                        amount: user.balance || 0,
                         balanceBefore: 0,
-                        balanceAfter: user.balance,
+                        balanceAfter: user.balance || 0,
                         metadata: {
                             note: 'Snapshot inicial de migración al Ledger (Genesis)',
                             migratedAt: migrationTimestamp,
@@ -250,7 +266,8 @@ async function runBackfill() {
                 Dailies: totalDailiesClaimed,
                 Racha: dailyStreak,
                 MaxRacha: maxDailyStreak,
-                Cartas: currentCardsCount,
+                TotalCartas: currentCardsCount,
+                Distintas: normalizedCards.length,
                 Míticas: byRarity.mythic,
                 Legendarias: byRarity.legendary,
                 Épicas: byRarity.epic
@@ -261,10 +278,10 @@ async function runBackfill() {
 
         console.log('\n' + '='.repeat(70))
         if (isDryRun) {
-            console.log('🔍 [DRY-RUN COMPLETADO] Se calculó el snapshot completo para todos los usuarios.')
+            console.log('🔍 [DRY-RUN COMPLETADO] Se normalizaron inventarios y calcularon snapshots en memoria.')
             console.log('💡 Ejecuta `npm run backfill` para guardar los cambios y las transacciones en MongoDB.')
         } else {
-            console.log('🎉 [MIGRACIÓN EXITOSA] Usuarios, transacciones iniciales y ofertas actualizados en MongoDB.')
+            console.log('🎉 [MIGRACIÓN EXITOSA] Usuarios, inventarios [{ cardId, count }] y ofertas actualizados en MongoDB.')
         }
         console.log('='.repeat(70))
 

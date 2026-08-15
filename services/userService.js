@@ -19,22 +19,24 @@ const createUser = async (user) => {
     return await newUser.save()
 }
 
-// devuelve el usuario con las cartas que tiene añadiendo el campo count a cada carta con el numero de esa carta que tiene
+// Devuelve el usuario con las cartas que tiene manteniendo retrocompatibilidad exacta con el cliente
 const getUserCards = async (discordId) => {
-    const user = await User.findOne({ discordId: discordId }).populate('cards')
+    const user = await User.findOne({ discordId: discordId }).populate('cards.cardId')
     if (!user) return null
-    const copiaUsuario = JSON.parse(JSON.stringify(user));
-    copiaUsuario.cards = copiaUsuario.cards.sort((a, b) => a.type - b.type)
-    copiaUsuario.cards = copiaUsuario.cards.reduce((acc, card) => {
-        const found = acc.find(c => c._id.toString() === card._id.toString())
-        if (found) {
-            found.count++
-        } else { 
-            const copia = JSON.parse(JSON.stringify(card));
-            acc.push({...copia, count: 1})
-        }
-        return acc
-    }, [])
+
+    const activeCards = (user.cards || [])
+        .filter(item => item.cardId && item.count > 0)
+        .map(item => {
+            const cardObj = typeof item.cardId.toObject === 'function' ? item.cardId.toObject() : item.cardId
+            return {
+                ...cardObj,
+                count: item.count
+            }
+        })
+        .sort((a, b) => (a.type || 0) - (b.type || 0))
+
+    const copiaUsuario = user.toObject()
+    copiaUsuario.cards = activeCards
     return copiaUsuario
 }
 
@@ -43,20 +45,36 @@ const deleteUser = async (id) => await User.findByIdAndDelete(id)
 const addCard = async (discordId, cardId) => {
     const user = await getUser(discordId)
     if (!user) throw new Error('Usuario no encontrado')
-    user.cards.push(cardId)
+
+    const cardIdStr = cardId.toString()
+    const existing = user.cards.find(item => item.cardId && item.cardId.toString() === cardIdStr)
+
+    if (existing) {
+        existing.count += 1
+    } else {
+        user.cards.push({ cardId, count: 1 })
+    }
     return await user.save()
 }
 
 const removeCard = async (discordId, cardId) => {
     const user = await getUser(discordId)
     if (!user) throw new Error('Usuario no encontrado')
-    const cardIndex = user.cards.findIndex(card => card.toString() == cardId.toString())
 
-    if (cardIndex === -1) throw new Error('No se encontró ninguna carta con ese ID.')
-    
-    const deletedCard = user.cards.splice(cardIndex, 1)
+    const cardIdStr = cardId.toString()
+    const existingIndex = user.cards.findIndex(item => item.cardId && item.cardId.toString() === cardIdStr)
+
+    if (existingIndex === -1 || user.cards[existingIndex].count <= 0) {
+        throw new Error('No se encontró ninguna carta con ese ID en tu colección.')
+    }
+
+    user.cards[existingIndex].count -= 1
+    if (user.cards[existingIndex].count === 0) {
+        user.cards.splice(existingIndex, 1)
+    }
+
     await user.save()
-    return deletedCard
+    return cardId
 }
 
 const addBalance = async (discordId, amount) => {
@@ -195,7 +213,14 @@ const rollRandomCardPurchase = async (discordId, card, cost = 100, roll = null) 
 
     user.totalCoinsSpent = (user.totalCoinsSpent || 0) + cost
     user.cardsOpenedCount = (user.cardsOpenedCount || 0) + 1
-    user.cards.push(card._id)
+
+    const cardIdStr = card._id.toString()
+    const existing = user.cards.find(item => item.cardId && item.cardId.toString() === cardIdStr)
+    if (existing) {
+        existing.count += 1
+    } else {
+        user.cards.push({ cardId: card._id, count: 1 })
+    }
 
     await user.save()
 
@@ -238,6 +263,7 @@ const getUserStats = async (discordId) => {
     ])
 
     const marketSalesCount = marketSales.length > 0 ? marketSales[0].count : 0
+    const totalCardsCount = (user.cards || []).reduce((sum, item) => sum + (item.count || 0), 0)
 
     return {
         discordId: user.discordId,
@@ -248,7 +274,7 @@ const getUserStats = async (discordId) => {
         totalDailiesClaimed: user.totalDailiesClaimed || 0,
         totalCoinsEarned: user.totalCoinsEarned || 0,
         totalCoinsSpent: user.totalCoinsSpent || 0,
-        cardsCount: user.cards ? user.cards.length : 0,
+        cardsCount: totalCardsCount,
         cardsOpenedCount: user.cardsOpenedCount || 0,
         marketSalesCount
     }
@@ -299,7 +325,13 @@ const getLeaderboardCards = async (limit = 10) => {
             $project: {
                 discordId: 1,
                 username: 1,
-                cardsCount: { $size: { $ifNull: ['$cards', []] } }
+                cardsCount: {
+                    $reduce: {
+                        input: '$cards',
+                        initialValue: 0,
+                        in: { $add: ['$$value', { $ifNull: ['$$this.count', 0] }] }
+                    }
+                }
             }
         },
         { $sort: { cardsCount: -1, username: 1 } },
@@ -318,21 +350,25 @@ const getLeaderboardCards = async (limit = 10) => {
 }
 
 const getUserWithNumberOfCards = async (discordId) => {
-    const user = User.aggregate([
+    const user = await User.aggregate([
         { $match: { discordId: discordId } },
-        { $lookup: { from: 'cards', localField: 'cards', foreignField: '_id', as: 'cards' } },
         { $unwind: '$cards' },
-        { $group: { _id: '$cards.type', count: { $sum: 1 } } }
+        { $match: { 'cards.count': { $gt: 0 } } },
+        { $lookup: { from: 'cards', localField: 'cards.cardId', foreignField: '_id', as: 'cardInfo' } },
+        { $unwind: '$cardInfo' },
+        { $group: { _id: '$cardInfo.type', count: { $sum: '$cards.count' } } }
     ])
     return user
 }
 
 const getUserCardByName = async (discordId, cardName) => {
-    const user = await User.findOne({ discordId: discordId }).populate('cards')
+    const user = await User.findOne({ discordId: discordId }).populate('cards.cardId')
     if (!user) throw new Error('Usuario no encontrado')
-    const card = user.cards.find(card => card.name === cardName)
-    if(!card) throw new Error('Card not found in your collection')
-    return { card, userId: user._id }
+
+    const cardItem = (user.cards || []).find(item => item.cardId && item.cardId.name === cardName && item.count > 0)
+    if (!cardItem) throw new Error('Card not found in your collection')
+
+    return { card: cardItem.cardId, userId: user._id }
 }
 
 export {

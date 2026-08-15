@@ -3,13 +3,21 @@
 
 import { Schema, model } from 'mongoose'
 
+const userCardSchema = new Schema(
+    {
+        _id: false,
+        cardId: { type: Schema.ObjectId, ref: 'Card', required: true },
+        count: { type: Number, default: 1, min: 0 }
+    }
+)
+
 const userSchema = new Schema(
     {
         _id: {type:Schema.ObjectId, auto:true},
         discordId: {type:String, required:true, trim:true, unique:true},
         username: {type:String, required:true, trim:true},
         balance: {type:Number, default:0},
-        cards: [{type:Schema.ObjectId, ref:'Card'}],
+        cards: [userCardSchema],
         lastDaily: {type:Date, default: () => new Date(Date.now() - 1000 * 60 * 60 * 24)},
         lastTimeCommand: {type:Date, default: () => new Date(Date.now() - 1000 * 60 * 60 * 24)},
 
