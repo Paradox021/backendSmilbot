@@ -28,7 +28,8 @@ interface UserSchema {
 
   // --- Telemetría y Rachas ---
   dailyStreak: number;         // Racha actual consecutiva
-  maxDailyStreak: number;      // Racha récord alcanzada
+  maxDailyStreak: number;      // Racha récord alcanzada en tiempo real
+  previousMaxStreak: number;   // Récord de la última racha rota (marca a batir)
   totalDailiesClaimed: number; // Total histórico de reclamos
   totalCoinsEarned: number;    // Total histórico de monedas ganadas
   totalCoinsSpent: number;     // Total histórico de monedas gastadas
@@ -47,7 +48,8 @@ interface UserSchema {
 * **Cooldown de uso:** Requiere un mínimo de **23 horas** desde el último reclamo.
 * **Ventana de Racha:**
   * **23h a 48h:** Mantiene y suma `+1` a la racha (`dailyStreak++`).
-  * **> 48h:** Se rompe la racha y se reinicia a `1`.
+  * **> 48h:** Se rompe la racha actual, se consolida `previousMaxStreak = maxDailyStreak`, y se reinicia `dailyStreak = 1`.
+* **Detección de Nuevo Récord:** Se emite `isNewRecord = true` únicamente el primer día que la racha actual supera a `previousMaxStreak` (`dailyStreak === previousMaxStreak + 1`).
 * **Registro contable:** Genera una transacción inmutable `DAILY_CLAIM` en el Ledger.
 
 ### B. Tirada de Gacha (`POST /user/:id/card/random`)

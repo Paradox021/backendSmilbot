@@ -34,7 +34,8 @@ interface UserSchema {
 
   // --- NUEVOS CAMPOS ---
   dailyStreak: number;          // Racha actual (default: 0)
-  maxDailyStreak: number;       // Racha récord alcanzada (default: 0)
+  maxDailyStreak: number;       // Racha récord alcanzada en tiempo real (default: 0)
+  previousMaxStreak: number;    // Récord de la última racha rota / consolidada (default: 0)
   totalDailiesClaimed: number;  // Total de veces que ha reclamado el daily (default: 0)
   totalCoinsEarned: number;     // Monedas ganadas en toda la historia (default: 0)
   totalCoinsSpent: number;      // Monedas gastadas en toda la historia (default: 0)
@@ -74,7 +75,8 @@ export interface TransactionSchema {
     offerId?: string;          // ID de la oferta de mercado
     streakAtClaim?: number;    // Racha que tenía al reclamar el daily
     previousStreak?: number;   // Racha previa al reclamo
-    previousMaxStreak?: number;// Racha récord previa al reclamo
+    previousMaxStreak?: number;// Racha récord previa consolidada
+    isNewRecord?: boolean;     // true únicamente si hoy batió su récord anterior
     streakBroken?: boolean;    // true si tardó >48h y rompió una racha previa
   };
   createdAt: Date;
@@ -123,18 +125,20 @@ Al ejecutar `POST /user/:discordId/dailyBalance`:
    $$\text{diffHours} = \frac{\text{now} - \text{lastDaily}}{1000 \times 60 \times 60}$$
 3. **Comprobar Cooldown:**
    * Si $\text{diffHours} < 23$: **Rechazar con error 400** (Indicar tiempo restante para poder reclamar).
-4. **Comprobar Racha:**
-   * Si $23 \le \text{diffHours} \le 48$: **Mantiene la racha** $\rightarrow$ `dailyStreak = previousStreak + 1`.
-   * Si $\text{diffHours} > 48$ o es su primer daily: **Pierde la racha** $\rightarrow$ `dailyStreak = 1` y `streakBroken = true`.
-5. **Actualizar Máxima Racha:**
-   * `maxDailyStreak = Math.max(dailyStreak, previousMaxStreak)`.
-6. **Actualizar Saldos y Estadísticas:**
+4. **Comprobar Racha y Consolidación de Récord Anterior:**
+   * Si $\text{diffHours} \le 48$: **Mantiene la racha** $\rightarrow$ `dailyStreak = previousStreak + 1`.
+   * Si $\text{diffHours} > 48$ (o primera vez): **Se rompe la racha** $\rightarrow$ consolida `previousMaxStreak = maxDailyStreak`, `dailyStreak = 1` y `streakBroken = true`.
+5. **Detección de Nuevo Récord:**
+   * `isNewRecord = previousMaxStreak > 0 && dailyStreak === previousMaxStreak + 1`. (Se activa **una única vez** al superar la marca).
+6. **Actualizar Máxima Racha Histórica en Tiempo Real:**
+   * `maxDailyStreak = Math.max(dailyStreak, maxDailyStreak)`.
+7. **Actualizar Saldos y Estadísticas:**
    * `balance = balance + 100`
    * `totalCoinsEarned = totalCoinsEarned + 100`
    * `totalDailiesClaimed = totalDailiesClaimed + 1`
    * `lastDaily = now`
-7. **Crear Registro en `Transaction`:**
-   * `type: 'DAILY_CLAIM'`, `amount: +100`, `metadata: { streakAtClaim: dailyStreak, previousStreak, previousMaxStreak, streakBroken }`.
+8. **Crear Registro en `Transaction`:**
+   * `type: 'DAILY_CLAIM'`, `amount: +100`, `metadata: { streakAtClaim: dailyStreak, previousStreak, previousMaxStreak, isNewRecord, streakBroken }`.
 
 ---
 
@@ -147,7 +151,7 @@ Al ejecutar `POST /user/:discordId/dailyBalance`:
    * `cardsOpenedCount = cardsOpenedCount + 1`
    * Añadir carta al array `cards`.
 3. **Crear Registro en `Transaction`:**
-   * `type: 'CARD_BUY'`, `amount: -100`, `metadata: { cardId: card._id, cardType: card.type, roll }`.
+   * `type: 'CARD_BUY'`, `amount: -100`, `metadata: { cardId: card._id, cardType: card.type, cardName: card.name, roll }`.
 
 ---
 
@@ -172,10 +176,11 @@ Al ejecutar `POST /user/:discordId/dailyBalance`:
 {
   "ok": true,
   "balance": 650,
-  "dailyStreak": 7,
-  "previousStreak": 6,
-  "maxDailyStreak": 14,
-  "previousMaxStreak": 14,
+  "dailyStreak": 11,
+  "previousStreak": 10,
+  "maxDailyStreak": 11,
+  "previousMaxStreak": 10,
+  "isNewRecord": true,
   "totalDailiesClaimed": 42
 }
 ```
@@ -191,8 +196,9 @@ Al ejecutar `POST /user/:discordId/dailyBalance`:
   "discordId": "123456789012345678",
   "username": "Gamer123",
   "balance": 650,
-  "dailyStreak": 7,
-  "maxDailyStreak": 14,
+  "dailyStreak": 11,
+  "maxDailyStreak": 11,
+  "previousMaxStreak": 10,
   "totalDailiesClaimed": 42,
   "totalCoinsEarned": 5400,
   "totalCoinsSpent": 4750,
@@ -318,14 +324,14 @@ Para asegurar la coherencia contable con los usuarios preexistentes, el script `
 ### A. Lógica para el comando Daily (`POST /user/:id/dailyBalance`)
 ```javascript
 const res = await api.post(`/user/${discordId}/dailyBalance`)
-const { balance, dailyStreak, previousStreak, maxDailyStreak, previousMaxStreak } = res.data
+const { balance, dailyStreak, previousStreak, maxDailyStreak, previousMaxStreak, isNewRecord } = res.data
 
-if (dailyStreak > previousMaxStreak) {
-  // 🎉 ¡Nuevo récord personal batido!
+if (isNewRecord) {
+  // 🎉 ¡Nuevo récord personal batido! Superó su récord anterior de `previousMaxStreak` días
 } else if (dailyStreak === 1 && previousStreak > 0) {
   // 💔 Se rompió la racha anterior de `previousStreak` días
 } else {
-  // 🔥 Racha mantenida normalmente
+  // 🔥 Racha mantenida normalmente (+1 día)
 }
 ```
 

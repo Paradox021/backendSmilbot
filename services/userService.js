@@ -145,8 +145,14 @@ const dailyBalance = async (discordId, amount = 100) => {
     }
 
     const previousStreak = user.dailyStreak || 0
-    const previousMaxStreak = user.maxDailyStreak || 0
     const isStreakBroken = diffHours > 48 && previousStreak > 0
+
+    // Si se rompió la racha anterior, consolidamos el récord de la racha previa en previousMaxStreak
+    if (isStreakBroken) {
+        user.previousMaxStreak = user.maxDailyStreak || previousStreak
+    }
+
+    const previousMaxStreak = user.previousMaxStreak || 0
 
     // Comprobar racha: entre 23h y 48h mantiene/suma racha; más de 48h o primera vez -> racha = 1
     if (diffHours <= 48) {
@@ -155,8 +161,11 @@ const dailyBalance = async (discordId, amount = 100) => {
         user.dailyStreak = 1
     }
 
-    // Actualizar récord de racha
-    user.maxDailyStreak = Math.max(user.dailyStreak, previousMaxStreak)
+    // Detectar si hoy supera por primera vez su récord previo consolidado
+    const isNewRecord = previousMaxStreak > 0 && user.dailyStreak === previousMaxStreak + 1
+
+    // Actualizar récord histórico global
+    user.maxDailyStreak = Math.max(user.dailyStreak, user.maxDailyStreak || 0)
 
     const balanceBefore = user.balance
     user.balance += amount
@@ -179,6 +188,7 @@ const dailyBalance = async (discordId, amount = 100) => {
             streakAtClaim: user.dailyStreak,
             previousStreak,
             previousMaxStreak,
+            isNewRecord,
             streakBroken: isStreakBroken
         }
     })
@@ -190,6 +200,7 @@ const dailyBalance = async (discordId, amount = 100) => {
         previousStreak,
         maxDailyStreak: user.maxDailyStreak,
         previousMaxStreak,
+        isNewRecord,
         totalDailiesClaimed: user.totalDailiesClaimed
     }
 }
@@ -214,16 +225,20 @@ const rollRandomCardPurchase = async (discordId, card, cost = 100, roll = null) 
     user.totalCoinsSpent = (user.totalCoinsSpent || 0) + cost
     user.cardsOpenedCount = (user.cardsOpenedCount || 0) + 1
 
-    const cardIdStr = card._id.toString()
-    const existing = user.cards.find(item => item.cardId && item.cardId.toString() === cardIdStr)
-    if (existing) {
-        existing.count += 1
+    // Añadir carta al inventario (o incrementar contador)
+    const existingCardIndex = (user.cards || []).findIndex(
+        item => item.cardId && (item.cardId.toString() === card._id.toString() || item.cardId._id?.toString() === card._id.toString())
+    )
+
+    if (existingCardIndex > -1) {
+        user.cards[existingCardIndex].count += 1
     } else {
         user.cards.push({ cardId: card._id, count: 1 })
     }
 
     await user.save()
 
+    // Registrar transacción en el Ledger
     await createTransaction({
         discordId: user.discordId,
         type: 'CARD_BUY',
@@ -231,21 +246,26 @@ const rollRandomCardPurchase = async (discordId, card, cost = 100, roll = null) 
         balanceBefore,
         balanceAfter,
         metadata: {
-            cardId: card._id.toString(),
+            cardId: card._id,
             cardType: card.type,
-            roll: roll !== null && roll !== undefined ? roll : null
+            cardName: card.name,
+            roll
         }
     })
 
-    return user
+    return {
+        ok: true,
+        user,
+        card
+    }
 }
 
 /**
- * Obtener estadísticas consolidadas del usuario (perfil / telemetría)
+ * Estadísticas completas del usuario
  */
 const getUserStats = async (discordId) => {
     const user = await getUser(discordId)
-    if (!user) return null
+    if (!user) throw new Error('Usuario no encontrado')
 
     // Calcular ventas exitosas en el mercado
     const marketSalesCount = await MarketOffer.countDocuments({
@@ -263,6 +283,7 @@ const getUserStats = async (discordId) => {
         balance: user.balance,
         dailyStreak: user.dailyStreak || 0,
         maxDailyStreak: user.maxDailyStreak || 0,
+        previousMaxStreak: user.previousMaxStreak || 0,
         totalDailiesClaimed: user.totalDailiesClaimed || 0,
         totalCoinsEarned: user.totalCoinsEarned || 0,
         totalCoinsSpent: user.totalCoinsSpent || 0,

@@ -24,6 +24,7 @@ const userSchema = new Schema(
         // --- CAMPOS DE TELEMETRÍA Y RACHAS ---
         dailyStreak: {type:Number, default:0},
         maxDailyStreak: {type:Number, default:0},
+        previousMaxStreak: {type:Number, default:0},
         totalDailiesClaimed: {type:Number, default:0},
         totalCoinsEarned: {type:Number, default:0},
         totalCoinsSpent: {type:Number, default:0},

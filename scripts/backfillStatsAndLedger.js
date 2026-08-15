@@ -208,6 +208,7 @@ async function runBackfill() {
                 }
             }
             const maxDailyStreak = Math.max(dailyStreak, totalDailiesClaimed > 0 ? 1 : 0)
+            const previousMaxStreak = (dailyStreak === 0) ? maxDailyStreak : 0
 
             // Desglose por rareza
             const byRarity = {
@@ -263,6 +264,7 @@ async function runBackfill() {
                             cards: normalizedCards,
                             dailyStreak,
                             maxDailyStreak,
+                            previousMaxStreak,
                             totalDailiesClaimed,
                             totalCoinsEarned,
                             totalCoinsSpent,
