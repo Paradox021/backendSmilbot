@@ -97,6 +97,12 @@ async function runBackfill() {
             }
         }
 
+        // Limpiar el campo offers obsoleto de la colección antigua markets
+        if (!isDryRun && legacyMarkets.length > 0) {
+            await Market.updateMany({}, { $unset: { offers: "" } })
+            console.log(`🧹 Campo legacy 'offers' limpiado con éxito de la colección 'markets'.`)
+        }
+
         console.log(`🛒 Ofertas de mercado procesadas y sincronizadas en market_offers: ${totalOffersMigrated}`)
 
         // 4. Analizar todas las ofertas en market_offers para calcular métricas por usuario
