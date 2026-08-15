@@ -1,7 +1,7 @@
 // service for user
 
 import { User } from '../models/user.js'
-import { Market } from '../models/market.js'
+import { Market, MarketOffer } from '../models/market.js'
 import { createTransaction } from './transactionService.js'
 
 const getUsers = async () => await User.find()
@@ -248,21 +248,13 @@ const getUserStats = async (discordId) => {
     if (!user) return null
 
     // Calcular ventas exitosas en el mercado
-    const marketSales = await Market.aggregate([
-        { $unwind: '$offers' },
-        {
-            $match: {
-                'offers.seller': user._id,
-                $or: [
-                    { 'offers.status': 'SOLD' },
-                    { 'offers.active': false, 'offers.buyer': { $ne: null } }
-                ]
-            }
-        },
-        { $count: 'count' }
-    ])
-
-    const marketSalesCount = marketSales.length > 0 ? marketSales[0].count : 0
+    const marketSalesCount = await MarketOffer.countDocuments({
+        seller: user._id,
+        $or: [
+            { status: 'SOLD' },
+            { active: false, buyer: { $ne: null } }
+        ]
+    })
     const totalCardsCount = (user.cards || []).reduce((sum, item) => sum + (item.count || 0), 0)
 
     return {

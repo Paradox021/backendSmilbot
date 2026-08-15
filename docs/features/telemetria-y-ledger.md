@@ -84,31 +84,30 @@ export interface TransactionSchema {
 
 ---
 
-### C. Actualización del Modelo de Mercado (`MarketOffer`)
-En lugar de eliminar físicamente la oferta de la base de datos al comprarse o cancelarse, manejar estados:
+### C. Colección Independiente de Mercado (`MarketOffer`)
+En lugar de embeber arrays en documentos de servidor o eliminar físicamente las ofertas al comprarse/cancelarse, cada oferta es un documento independiente en `market_offers`:
 
 ```typescript
 export type MarketOfferStatus = 'ACTIVE' | 'SOLD' | 'CANCELLED';
 
 interface MarketOfferSchema {
   _id: ObjectId | string;
-  serverId: string;
-  seller: {
-    discordId: string;
-    username: string;
-  };
-  cardId: ObjectId | string;
-  price: number;
-  
-  // --- NUEVOS CAMPOS ---
-  status: MarketOfferStatus;   // Default: 'ACTIVE'
+  serverId: string;            // ID del servidor de Discord (Guild ID)
+  seller: ObjectId | string;   // Ref a 'User'
+  sellerDiscordId: string;     // Discord ID del vendedor
+  cardId: ObjectId | string;   // Ref a 'Card'
+  price: number;               // Precio en monedas
+  status: MarketOfferStatus;   // 'ACTIVE' | 'SOLD' | 'CANCELLED' (default: 'ACTIVE')
+  buyer?: ObjectId | string | null; // Ref a 'User'
   buyerDiscordId?: string | null;
   soldPrice?: number | null;
   soldAt?: Date | null;
   cancelledAt?: Date | null;
   createdAt: Date;
+  updatedAt: Date;
 }
 ```
+*💡 **Índices recomendados:** `{ serverId: 1, status: 1, createdAt: -1 }`, `{ seller: 1, status: 1 }`.*
 *💡 **Nota:** Para el endpoint `GET /market/:serverId/offers`, filtrar únicamente las ofertas con `status: 'ACTIVE'`.*
 
 ---

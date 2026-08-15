@@ -1,12 +1,12 @@
-// Script para migrar y calcular estadísticas históricas de los usuarios con Snapshot de Apertura
-// y normalización de inventario a [{ cardId, count }]
+// Script para migrar y calcular estadísticas históricas de los usuarios con Snapshot de Apertura,
+// normalización de inventario a [{ cardId, count }] y migración de ofertas a la colección independiente market_offers
 // Uso: node scripts/backfillStatsAndLedger.js [--dry-run]
 
 import mongoose from 'mongoose'
 import * as dotenv from 'dotenv'
 import { User } from '../models/user.js'
 import { Card } from '../models/card.js'
-import { Market } from '../models/market.js'
+import { Market, MarketOffer } from '../models/market.js'
 import { Transaction } from '../models/transaction.js'
 
 dotenv.config()
@@ -24,7 +24,7 @@ const RARITY_NAMES = {
 async function runBackfill() {
     try {
         console.log('='.repeat(70))
-        console.log(`📊 Iniciando Migración, Telemetría Histórica, Normalización de Inventario`)
+        console.log(`📊 Iniciando Migración, Telemetría Histórica y Mercado Independiente`)
         console.log(`   Modo: ${isDryRun ? '🔍 [DRY-RUN (Simulación sin cambios)]' : '💾 [APLICAR (Guardar en MongoDB)]'}`)
         console.log('='.repeat(70))
 
@@ -37,83 +37,110 @@ async function runBackfill() {
         console.log('✅ Conectado a MongoDB con éxito.\n')
 
         // 1. Cargar catálogo de cartas para mapear rarezas rápidamente
-        const allCards = await Card.find()
+        const allCards = await Card.find().lean()
         const cardTypeMap = new Map() // cardId (string) -> type (number 0..4)
         allCards.forEach(c => cardTypeMap.set(c._id.toString(), c.type))
         console.log(`🎴 Catálogo de cartas cargado: ${allCards.length} cartas registradas.`)
 
-        // 2. Procesar ofertas del Mercado
-        const markets = await Market.find()
+        // 2. Cargar usuarios básicos para mapear _id -> discordId
+        const rawUsers = await User.find().lean()
+        const userDiscordMap = new Map() // userId (string) -> discordId (string)
+        rawUsers.forEach(u => userDiscordMap.set(u._id.toString(), u.discordId))
+
+        // 3. Procesar y migrar ofertas del Mercado a la colección independiente market_offers
+        const legacyMarkets = await Market.find().lean()
+        let totalOffersMigrated = 0
+
+        for (const market of legacyMarkets) {
+            for (const offer of (market.offers || [])) {
+                let status = offer.status
+                if (!status) {
+                    if (offer.active === false && offer.buyer) {
+                        status = 'SOLD'
+                    } else if (offer.active === false) {
+                        status = 'CANCELLED'
+                    } else {
+                        status = 'ACTIVE'
+                    }
+                }
+
+                const sellerIdStr = offer.seller ? offer.seller.toString() : null
+                const buyerIdStr = offer.buyer ? offer.buyer.toString() : null
+                const sellerDiscordId = sellerIdStr ? (userDiscordMap.get(sellerIdStr) || null) : null
+                const buyerDiscordId = buyerIdStr ? (userDiscordMap.get(buyerIdStr) || offer.buyerDiscordId || null) : null
+
+                const offerDoc = {
+                    serverId: market.discordId,
+                    seller: offer.seller,
+                    sellerDiscordId,
+                    cardId: offer.cardId,
+                    price: offer.price,
+                    status,
+                    active: status === 'ACTIVE',
+                    buyer: offer.buyer || null,
+                    buyerDiscordId,
+                    soldPrice: offer.soldPrice || (status === 'SOLD' ? offer.price : null),
+                    soldAt: offer.soldAt || (status === 'SOLD' ? (offer.updatedAt || new Date()) : null),
+                    cancelledAt: offer.cancelledAt || (status === 'CANCELLED' ? (offer.updatedAt || new Date()) : null),
+                    createdAt: offer.createdAt || new Date(),
+                    updatedAt: offer.updatedAt || new Date()
+                }
+
+                if (!isDryRun) {
+                    await MarketOffer.updateOne(
+                        { _id: offer._id },
+                        { $set: offerDoc },
+                        { upsert: true }
+                    )
+                }
+                totalOffersMigrated++
+            }
+        }
+
+        console.log(`🛒 Ofertas de mercado procesadas y sincronizadas en market_offers: ${totalOffersMigrated}`)
+
+        // 4. Analizar todas las ofertas en market_offers para calcular métricas por usuario
+        const allOffers = await MarketOffer.find().lean()
         const salesBySeller = new Map() // sellerId -> { totalEarned, count }
         const purchasesByBuyer = new Map() // buyerId -> { totalSpent, count }
         const activeOffersBySeller = new Map() // sellerId -> count
 
-        let totalOffersUpdated = 0
+        for (const offer of allOffers) {
+            const sellerId = offer.seller ? offer.seller.toString() : null
+            const buyerId = offer.buyer ? offer.buyer.toString() : null
+            const price = offer.soldPrice || offer.price || 0
 
-        for (const market of markets) {
-            let marketModified = false
-            for (const offer of market.offers) {
-                // Sincronizar status si no existía
-                if (!offer.status) {
-                    if (offer.active === false && offer.buyer) {
-                        offer.status = 'SOLD'
-                        offer.soldPrice = offer.soldPrice || offer.price
-                        offer.soldAt = offer.soldAt || offer.updatedAt || new Date()
-                    } else if (offer.active === false) {
-                        offer.status = 'CANCELLED'
-                        offer.cancelledAt = offer.cancelledAt || offer.updatedAt || new Date()
-                    } else {
-                        offer.status = 'ACTIVE'
-                    }
-                    marketModified = true
-                    totalOffersUpdated++
+            if (offer.status === 'SOLD' || (offer.active === false && offer.buyer)) {
+                if (sellerId) {
+                    const prev = salesBySeller.get(sellerId) || { totalEarned: 0, count: 0 }
+                    salesBySeller.set(sellerId, {
+                        totalEarned: prev.totalEarned + price,
+                        count: prev.count + 1
+                    })
                 }
 
-                // Agrupar ventas completadas
-                if (offer.status === 'SOLD' || (offer.active === false && offer.buyer)) {
-                    const sellerId = offer.seller ? offer.seller.toString() : null
-                    const buyerId = offer.buyer ? offer.buyer.toString() : null
-                    const price = offer.soldPrice || offer.price || 0
-
-                    if (sellerId) {
-                        const prev = salesBySeller.get(sellerId) || { totalEarned: 0, count: 0 }
-                        salesBySeller.set(sellerId, {
-                            totalEarned: prev.totalEarned + price,
-                            count: prev.count + 1
-                        })
-                    }
-
-                    if (buyerId) {
-                        const prev = purchasesByBuyer.get(buyerId) || { totalSpent: 0, count: 0 }
-                        purchasesByBuyer.set(buyerId, {
-                            totalSpent: prev.totalSpent + price,
-                            count: prev.count + 1
-                        })
-                    }
-                } else if (offer.status === 'ACTIVE' || offer.active === true) {
-                    const sellerId = offer.seller ? offer.seller.toString() : null
-                    if (sellerId) {
-                        const prevCount = activeOffersBySeller.get(sellerId) || 0
-                        activeOffersBySeller.set(sellerId, prevCount + 1)
-                    }
+                if (buyerId) {
+                    const prev = purchasesByBuyer.get(buyerId) || { totalSpent: 0, count: 0 }
+                    purchasesByBuyer.set(buyerId, {
+                        totalSpent: prev.totalSpent + price,
+                        count: prev.count + 1
+                    })
                 }
-            }
-
-            if (marketModified && !isDryRun) {
-                await market.save()
+            } else if (offer.status === 'ACTIVE' || offer.active === true) {
+                if (sellerId) {
+                    const prevCount = activeOffersBySeller.get(sellerId) || 0
+                    activeOffersBySeller.set(sellerId, prevCount + 1)
+                }
             }
         }
 
-        console.log(`🛒 Mercados procesados. Ofertas normalizadas: ${totalOffersUpdated}`)
-
-        // 3. Procesar Usuarios
-        const users = await User.find().lean()
-        console.log(`👥 Analizando ${users.length} usuarios y normalizando inventarios...\n`)
+        // 5. Procesar Usuarios
+        console.log(`👥 Analizando ${rawUsers.length} usuarios y normalizando inventarios...\n`)
 
         const summary = []
         const migrationTimestamp = new Date()
 
-        for (const user of users) {
+        for (const user of rawUsers) {
             const userId = user._id.toString()
             const sellerData = salesBySeller.get(userId) || { totalEarned: 0, count: 0 }
             const buyerData = purchasesByBuyer.get(userId) || { totalSpent: 0, count: 0 }
@@ -239,7 +266,7 @@ async function runBackfill() {
                     }
                 )
 
-                // Crear transacción inicial de apertura en el Ledger si no existe ninguna previa
+                // Crear transacción inicial de apertura en el Ledger SOLO SI no existe ninguna previa (idempotente)
                 const existingTx = await Transaction.findOne({ discordId: user.discordId })
                 if (!existingTx) {
                     await Transaction.create({
@@ -278,10 +305,10 @@ async function runBackfill() {
 
         console.log('\n' + '='.repeat(70))
         if (isDryRun) {
-            console.log('🔍 [DRY-RUN COMPLETADO] Se normalizaron inventarios y calcularon snapshots en memoria.')
+            console.log('🔍 [DRY-RUN COMPLETADO] Se normalizaron inventarios, mercado y snapshots en memoria.')
             console.log('💡 Ejecuta `npm run backfill` para guardar los cambios y las transacciones en MongoDB.')
         } else {
-            console.log('🎉 [MIGRACIÓN EXITOSA] Usuarios, inventarios [{ cardId, count }] y ofertas actualizados en MongoDB.')
+            console.log('🎉 [MIGRACIÓN EXITOSA] Usuarios, inventarios [{ cardId, count }] y colección market_offers sincronizados en MongoDB.')
         }
         console.log('='.repeat(70))
 

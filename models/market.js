@@ -40,6 +40,8 @@ const marketSchema = new Schema(
     }
 )
 
+import { MarketOffer } from './marketOffer.js'
+
 const Market = model('Market', marketSchema)
 
-export { Market }
+export { Market, MarketOffer }

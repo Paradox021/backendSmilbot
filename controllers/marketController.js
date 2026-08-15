@@ -37,6 +37,7 @@ const addOffer = async (req, res) => {
             cardId: card._id,
             price: Number(req.body.price),
             seller: userId,
+            sellerDiscordId: discordId,
             active: true,
             status: 'ACTIVE'
         }
@@ -55,11 +56,6 @@ const buyOffer = async (req, res) => {
         let buyer = await userService.getUser(req.body.discordId)
         if (!buyer) {
             buyer = await userService.createUser({ discordId: req.body.discordId, username: req.body.username })
-        }
-
-        const market = await marketService.getMarket(req.params.marketId)
-        if (!market) {
-            await marketService.createMarket({ discordId: req.params.marketId })
         }
 
         const offer = await marketService.getMarketOffer(req.params.marketId, req.params.offerId)
@@ -89,7 +85,7 @@ const buyOffer = async (req, res) => {
         const boughtOffer = await marketService.buyOffer(req.params.marketId, req.params.offerId, buyer)
 
         // Transferir carta al comprador
-        buyer.cards.push(boughtOffer.cardId)
+        await userService.addCard(buyer.discordId, boughtOffer.cardId)
 
         // Actualizar balance y métricas del comprador
         const buyerBalanceBefore = buyer.balance
