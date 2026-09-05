@@ -32,8 +32,19 @@ const getCardsLeaderboard = async (req, res) => {
     }
 }
 
+const getLuckLeaderboard = async (req, res) => {
+    try {
+        const { order = 'desc', minPulls = 20, limit = 10 } = req.query
+        const leaderboard = await userService.getLeaderboardLuck(order, minPulls, limit)
+        res.status(200).json(leaderboard)
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+}
+
 export {
     getStreaksLeaderboard,
     getWealthLeaderboard,
-    getCardsLeaderboard
+    getCardsLeaderboard,
+    getLuckLeaderboard
 }

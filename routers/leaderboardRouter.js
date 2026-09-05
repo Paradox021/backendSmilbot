@@ -8,5 +8,6 @@ const leaderboardRouter = Router()
 leaderboardRouter.get('/streaks', leaderboardController.getStreaksLeaderboard)
 leaderboardRouter.get('/wealth', leaderboardController.getWealthLeaderboard)
 leaderboardRouter.get('/cards', leaderboardController.getCardsLeaderboard)
+leaderboardRouter.get('/luck', leaderboardController.getLuckLeaderboard)
 
 export default leaderboardRouter

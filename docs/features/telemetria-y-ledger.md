@@ -204,7 +204,22 @@ Al ejecutar `POST /user/:discordId/dailyBalance`:
   "totalCoinsSpent": 4750,
   "cardsCount": 35,
   "cardsOpenedCount": 30,
-  "marketSalesCount": 5
+  "marketSalesCount": 5,
+  "luck": {
+    "totalCards": 35,
+    "luckPercentage": 138.5,
+    "luckDelta": "+38.5%",
+    "tier": "Lucky",
+    "tierCode": "LUCKY",
+    "eligibleForLeaderboard": true,
+    "breakdown": {
+      "common": 18,
+      "rare": 11,
+      "epic": 4,
+      "legendary": 2,
+      "mythic": 0
+    }
+  }
 }
 ```
 
@@ -275,6 +290,48 @@ Al ejecutar `POST /user/:discordId/dailyBalance`:
   { "discordId": "111...", "username": "Player1", "cardsCount": 120 },
   { "discordId": "444...", "username": "Player4", "cardsCount": 98 }
 ]
+```
+
+#### D. Top Suerte en Gacha (Nuevo)
+* **Método:** `GET`
+* **Ruta:** `/leaderboard/luck?order=desc&minPulls=20&limit=10`
+* **Parámetros Opcionales de Consulta (Query Params):**
+  * `order`: `'desc'` (Default, jugadores más afortunados / *blessed*) o `'asc'` (jugadores más desafortunados / *cursed*).
+  * `minPulls`: Umbral mínimo de cartas requeridas para calificar (Default: `20`). Evita que jugadores con pocas tiradas alteren el ranking.
+  * `limit`: Máximo de usuarios a retornar (Default: `10`, máx: `100`).
+* **Neutralización de Mercado:** Para garantizar justicia total y evitar que usuarios compren cartas en el mercado para inflar su suerte, el backend calcula:
+  $$\text{Cartas Gacha} = \text{Inventario} - \text{Compras en Mercado} + \text{Ventas en Mercado}$$
+* **Escala de Tiers en Inglés:**
+  * `GODLY` (> +40% delta): *"Godly Luck"*
+  * `LUCKY` (+15% a +40%): *"Lucky"*
+  * `AVERAGE` (-15% a +15%): *"Average"*
+  * `UNLUCKY` (-30% a -15%): *"Unlucky"*
+  * `CURSED` (< -30% delta): *"Cursed"*
+* **Respuesta Exitosa (200 OK):**
+```json
+{
+  "order": "desc",
+  "minPulls": 20,
+  "leaderboard": [
+    {
+      "rank": 1,
+      "discordId": "111...",
+      "username": "LuckyPlayer",
+      "totalCards": 45,
+      "luckPercentage": 145.2,
+      "luckDelta": "+45.2%",
+      "tier": "Godly Luck",
+      "tierCode": "GODLY",
+      "breakdown": {
+        "common": 20,
+        "rare": 14,
+        "epic": 7,
+        "legendary": 3,
+        "mythic": 1
+      }
+    }
+  ]
+}
 ```
 
 ---

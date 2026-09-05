@@ -58,4 +58,4 @@ node scripts/migrateImages.js --from=local --to=supabase
 * **`/card`**: Gestión de cartas, filtros por rareza (`/card/mythic`, etc.) y creación/eliminación.
 * **`/user`**: Usuarios, reclamo de `dailyBalance`, tiradas de gacha `/card/random`, inventario `/cards` y estadísticas `/stats`.
 * **`/market`**: Listado de ofertas activas por servidor `/offers`, publicación, compra `/buy` y cancelación.
-* **`/leaderboard`**: Rankings globales de rachas (`/streaks`), riqueza (`/wealth`) y cartas coleccionadas (`/cards`).
+* **`/leaderboard`**: Rankings globales de rachas (`/streaks`), riqueza (`/wealth`), cartas coleccionadas (`/cards`) y suerte en gacha (`/luck`).

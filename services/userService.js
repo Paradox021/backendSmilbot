@@ -1,6 +1,7 @@
 // service for user
 
 import { User } from '../models/user.js'
+import { Card } from '../models/card.js'
 import { Market, MarketOffer } from '../models/market.js'
 import { createTransaction } from './transactionService.js'
 
@@ -260,6 +261,152 @@ const rollRandomCardPurchase = async (discordId, card, cost = 100, roll = null) 
     }
 }
 
+const RARITY_NAMES = {
+    0: 'common',
+    1: 'rare',
+    2: 'epic',
+    3: 'legendary',
+    4: 'mythic'
+}
+
+const RARITY_WEIGHTS = {
+    common: 1,
+    rare: 3,
+    epic: 10,
+    legendary: 50,
+    mythic: 200
+}
+
+const EXPECTED_POINTS_PER_CARD = 4.475
+
+const calculateLuckScore = (breakdown, totalCards) => {
+    const safeTotal = Math.max(0, parseInt(totalCards) || 0)
+    const safeBreakdown = {
+        common: Math.max(0, breakdown?.common || 0),
+        rare: Math.max(0, breakdown?.rare || 0),
+        epic: Math.max(0, breakdown?.epic || 0),
+        legendary: Math.max(0, breakdown?.legendary || 0),
+        mythic: Math.max(0, breakdown?.mythic || 0)
+    }
+
+    if (safeTotal <= 0) {
+        return {
+            totalCards: 0,
+            luckPercentage: 100.0,
+            luckDelta: '+0.0%',
+            tier: 'Average',
+            tierCode: 'AVERAGE',
+            breakdown: safeBreakdown
+        }
+    }
+
+    const actualPoints =
+        safeBreakdown.common * RARITY_WEIGHTS.common +
+        safeBreakdown.rare * RARITY_WEIGHTS.rare +
+        safeBreakdown.epic * RARITY_WEIGHTS.epic +
+        safeBreakdown.legendary * RARITY_WEIGHTS.legendary +
+        safeBreakdown.mythic * RARITY_WEIGHTS.mythic
+
+    const expectedPoints = safeTotal * EXPECTED_POINTS_PER_CARD
+    const rawRatio = actualPoints / expectedPoints
+    const rawPercentage = rawRatio * 100
+    const rawDelta = (rawRatio - 1) * 100
+
+    const luckPercentage = Math.round(rawPercentage * 10) / 10
+    const roundedDelta = Math.round(rawDelta * 10) / 10
+    const luckDelta = (roundedDelta >= 0 ? '+' : '') + roundedDelta.toFixed(1) + '%'
+
+    let tierCode = 'AVERAGE'
+    let tier = 'Average'
+
+    if (rawDelta > 40) {
+        tierCode = 'GODLY'
+        tier = 'Godly Luck'
+    } else if (rawDelta >= 15) {
+        tierCode = 'LUCKY'
+        tier = 'Lucky'
+    } else if (rawDelta >= -15) {
+        tierCode = 'AVERAGE'
+        tier = 'Average'
+    } else if (rawDelta >= -30) {
+        tierCode = 'UNLUCKY'
+        tier = 'Unlucky'
+    } else {
+        tierCode = 'CURSED'
+        tier = 'Cursed'
+    }
+
+    return {
+        totalCards: safeTotal,
+        luckPercentage,
+        luckDelta,
+        tier,
+        tierCode,
+        breakdown: safeBreakdown
+    }
+}
+
+const getCardTypeMap = async () => {
+    const cards = await Card.find({}, '_id type').lean()
+    const map = new Map()
+    cards.forEach(c => map.set(c._id.toString(), c.type ?? 0))
+    return map
+}
+
+const getUserEffectiveGachaBreakdown = async (user, cardTypeMap) => {
+    const inventoryMap = new Map()
+    for (const item of (user.cards || [])) {
+        if (!item.cardId || !item.count || item.count <= 0) continue
+        const idStr = item.cardId._id ? item.cardId._id.toString() : item.cardId.toString()
+        inventoryMap.set(idStr, (inventoryMap.get(idStr) || 0) + item.count)
+    }
+
+    const [boughtOffers, soldOffers] = await Promise.all([
+        MarketOffer.find({
+            status: 'SOLD',
+            $or: [{ buyer: user._id }, { buyerDiscordId: user.discordId }]
+        }).select('cardId').lean(),
+        MarketOffer.find({
+            status: 'SOLD',
+            $or: [{ seller: user._id }, { sellerDiscordId: user.discordId }]
+        }).select('cardId').lean()
+    ])
+
+    const boughtMap = new Map()
+    for (const offer of boughtOffers) {
+        if (!offer.cardId) continue
+        const idStr = offer.cardId.toString()
+        boughtMap.set(idStr, (boughtMap.get(idStr) || 0) + 1)
+    }
+
+    const soldMap = new Map()
+    for (const offer of soldOffers) {
+        if (!offer.cardId) continue
+        const idStr = offer.cardId.toString()
+        soldMap.set(idStr, (soldMap.get(idStr) || 0) + 1)
+    }
+
+    const allCardIds = new Set([...inventoryMap.keys(), ...soldMap.keys()])
+    const breakdown = { common: 0, rare: 0, epic: 0, legendary: 0, mythic: 0 }
+    let totalCards = 0
+
+    for (const idStr of allCardIds) {
+        const inv = inventoryMap.get(idStr) || 0
+        const bought = boughtMap.get(idStr) || 0
+        const sold = soldMap.get(idStr) || 0
+
+        const netGacha = Math.max(0, inv - bought) + sold
+        if (netGacha > 0) {
+            const cardType = cardTypeMap.get(idStr) ?? 0
+            const rarityKey = RARITY_NAMES[cardType] || 'common'
+            breakdown[rarityKey] += netGacha
+            totalCards += netGacha
+        }
+    }
+
+    return { breakdown, totalCards }
+}
+
 /**
  * Estadísticas completas del usuario
  */
@@ -277,6 +424,19 @@ const getUserStats = async (discordId) => {
     })
     const totalCardsCount = (user.cards || []).reduce((sum, item) => sum + (item.count || 0), 0)
 
+    // Calcular métricas de suerte neutralizadas con historial de mercado
+    const cardTypeMap = await getCardTypeMap()
+    const { breakdown, totalCards: effectiveGachaCards } = await getUserEffectiveGachaBreakdown(user, cardTypeMap)
+    const luckMetrics = calculateLuckScore(breakdown, effectiveGachaCards)
+    const minPullsThreshold = 20
+    const eligibleForLeaderboard = effectiveGachaCards >= minPullsThreshold
+
+    const luck = {
+        ...luckMetrics,
+        eligibleForLeaderboard,
+        ...(eligibleForLeaderboard ? {} : { cardsNeeded: minPullsThreshold - effectiveGachaCards })
+    }
+
     return {
         discordId: user.discordId,
         username: user.username,
@@ -289,7 +449,8 @@ const getUserStats = async (discordId) => {
         totalCoinsSpent: user.totalCoinsSpent || 0,
         cardsCount: totalCardsCount,
         cardsOpenedCount: user.cardsOpenedCount || 0,
-        marketSalesCount
+        marketSalesCount,
+        luck
     }
 }
 
@@ -362,6 +523,108 @@ const getLeaderboardCards = async (limit = 10) => {
     return users
 }
 
+const getLeaderboardLuck = async (order = 'desc', minPulls = 20, limit = 10) => {
+    const parsedLimit = Math.max(1, Math.min(100, parseInt(limit) || 10))
+    const parsedMinPulls = Math.max(1, parseInt(minPulls) || 20)
+    const isAsc = (order || 'desc').toString().toLowerCase() === 'asc'
+    const sortOrder = isAsc ? 'asc' : 'desc'
+
+    const [cardTypeMap, users, soldOffers] = await Promise.all([
+        getCardTypeMap(),
+        User.find({ 'cards.0': { $exists: true } }).select('_id discordId username cards').lean(),
+        MarketOffer.find({ status: 'SOLD' }).select('cardId seller buyer sellerDiscordId buyerDiscordId').lean()
+    ])
+
+    // Build buyer & seller frequency maps keyed by userId and discordId
+    const userBoughtMap = new Map()
+    const userSoldMap = new Map()
+
+    const incrementUserMap = (outerMap, userKey, cardIdStr) => {
+        if (!userKey || !cardIdStr) return
+        if (!outerMap.has(userKey)) outerMap.set(userKey, new Map())
+        const inner = outerMap.get(userKey)
+        inner.set(cardIdStr, (inner.get(cardIdStr) || 0) + 1)
+    }
+
+    for (const offer of soldOffers) {
+        if (!offer.cardId) continue
+        const cardIdStr = offer.cardId.toString()
+        if (offer.buyer) incrementUserMap(userBoughtMap, offer.buyer.toString(), cardIdStr)
+        if (offer.buyerDiscordId) incrementUserMap(userBoughtMap, offer.buyerDiscordId, cardIdStr)
+        if (offer.seller) incrementUserMap(userSoldMap, offer.seller.toString(), cardIdStr)
+        if (offer.sellerDiscordId) incrementUserMap(userSoldMap, offer.sellerDiscordId, cardIdStr)
+    }
+
+    const candidates = []
+
+    for (const u of users) {
+        const userIdStr = u._id ? u._id.toString() : ''
+        const discordId = u.discordId || ''
+
+        // Map inventory
+        const inventoryMap = new Map()
+        for (const item of (u.cards || [])) {
+            if (!item.cardId || !item.count || item.count <= 0) continue
+            const idStr = item.cardId.toString()
+            inventoryMap.set(idStr, (inventoryMap.get(idStr) || 0) + item.count)
+        }
+
+        const boughtCardCounts = userBoughtMap.get(userIdStr) || userBoughtMap.get(discordId) || new Map()
+        const soldCardCounts = userSoldMap.get(userIdStr) || userSoldMap.get(discordId) || new Map()
+
+        const allCardIds = new Set([...inventoryMap.keys(), ...soldCardCounts.keys()])
+        const breakdown = { common: 0, rare: 0, epic: 0, legendary: 0, mythic: 0 }
+        let totalCards = 0
+
+        for (const idStr of allCardIds) {
+            const inv = inventoryMap.get(idStr) || 0
+            const bought = boughtCardCounts.get(idStr) || 0
+            const sold = soldCardCounts.get(idStr) || 0
+
+            const netGacha = Math.max(0, inv - bought) + sold
+            if (netGacha > 0) {
+                const cardType = cardTypeMap.get(idStr) ?? 0
+                const rarityKey = RARITY_NAMES[cardType] || 'common'
+                breakdown[rarityKey] += netGacha
+                totalCards += netGacha
+            }
+        }
+
+        if (totalCards >= parsedMinPulls) {
+            const luckScore = calculateLuckScore(breakdown, totalCards)
+            candidates.push({
+                discordId: u.discordId,
+                username: u.username,
+                totalCards,
+                luckPercentage: luckScore.luckPercentage,
+                luckDelta: luckScore.luckDelta,
+                tier: luckScore.tier,
+                tierCode: luckScore.tierCode,
+                breakdown: luckScore.breakdown
+            })
+        }
+    }
+
+    candidates.sort((a, b) => {
+        if (isAsc) {
+            return a.luckPercentage - b.luckPercentage || a.username.localeCompare(b.username)
+        } else {
+            return b.luckPercentage - a.luckPercentage || a.username.localeCompare(b.username)
+        }
+    })
+
+    const ranked = candidates.slice(0, parsedLimit).map((item, index) => ({
+        rank: index + 1,
+        ...item
+    }))
+
+    return {
+        order: sortOrder,
+        minPulls: parsedMinPulls,
+        leaderboard: ranked
+    }
+}
+
 const getUserWithNumberOfCards = async (discordId) => {
     const user = await User.aggregate([
         { $match: { discordId: discordId } },
@@ -402,5 +665,7 @@ export {
     getUserStats,
     getLeaderboardStreaks,
     getLeaderboardWealth,
-    getLeaderboardCards
+    getLeaderboardCards,
+    getLeaderboardLuck,
+    calculateLuckScore
 }
