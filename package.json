@@ -1,7 +1,7 @@
 {
-  "name": "smilbot",
+  "name": "smilbot-backend",
   "version": "1.0.0",
-  "description": "Backend de Smilbot",
+  "description": "Backend API REST para el ecosistema Smilbot (persistencia, cartas gacha, auditoría contable y mercado P2P)",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -12,9 +12,17 @@
     "backfill:dry": "node scripts/backfillStatsAndLedger.js --dry-run"
   },
   "keywords": [
-    "Smilbot"
+    "smilbot",
+    "discord-bot",
+    "gacha",
+    "cards",
+    "economy",
+    "backend",
+    "api",
+    "express",
+    "mongodb"
   ],
-  "author": "Paradox",
+  "author": "Paradox021",
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
