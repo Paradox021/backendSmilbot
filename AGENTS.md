@@ -1,4 +1,4 @@
-# AGENTS.md - Reglas e Instrucciones para Agentes de IA en Backend Smilbot
+﻿# AGENTS.md - Reglas e Instrucciones para Agentes de IA en Backend Smilbot
 
 Bienvenido al **Backend API de Smilbot**, un servicio REST modular desarrollado en Node.js (ES Modules) con Express.js y MongoDB (Mongoose), encargado de la persistencia de datos, auditoría contable (Ledger), transacciones atómicas, catálogo de cartas gacha, mercado P2P y analíticas de usuarios.
 
@@ -17,7 +17,7 @@ Este documento establece los principios de trabajo, la arquitectura del proyecto
 Antes de entregar una respuesta final o cerrar un cambio:
 1. **Contratos de API REST:** Si agregaste, modificaste o eliminaste endpoints, parámetros, query params o payloads de respuesta, actualiza la nota correspondiente en `F:\smilbot-project\smilbot-vault\Backend API\` y actualiza `.env.example` si requiere nuevas variables.
 2. **Modelos y Lógica de Negocio:** Si modificaste esquemas de Mongoose (`User`, `Card`, `MarketOffer`, `Transaction`) o lógica contable/probabilidades, actualiza `F:\smilbot-project\smilbot-vault\Modelos y Contratos\`.
-3. Si agregaste una nota nueva a Obsidian, enlázala en `00 - Inicio.md` y en `README.md`.
+3. Si agregaste una nota nueva a Obsidian, enlázala en `README.md` y en `README.md`.
 
 ---
 
