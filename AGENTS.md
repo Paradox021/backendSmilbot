@@ -11,13 +11,14 @@ Este documento establece los principios de trabajo, la arquitectura del proyecto
 > **NINGUNA tarea, cambio o implementación se considera completada sin haber actualizado o creado la documentación correspondiente en la Bóveda Centralizada de Obsidian.**
 
 ### 📚 Bóveda Centralizada de Obsidian (Single Source of Truth)
-- **Ruta de la Bóveda:** `F:\smilbot-project\smilbot-vault` (disponible vía servidor MCP `obsidian_vault` o en disco).
+- **Repositorio:** [Paradox021/smilbot-vault](https://github.com/Paradox021/smilbot-vault)
+- **Acceso en Entorno:** Servidor MCP `obsidian_vault` (o la ruta local donde esté clonada la bóveda).
 - Esta bóveda es la **única fuente de verdad compartida** entre el **Backend API** y el **Bot de Discord**.
 
 Antes de entregar una respuesta final o cerrar un cambio:
-1. **Contratos de API REST:** Si agregaste, modificaste o eliminaste endpoints, parámetros, query params o payloads de respuesta, actualiza la nota correspondiente en `F:\smilbot-project\smilbot-vault\Backend API\` y actualiza `.env.example` si requiere nuevas variables.
-2. **Modelos y Lógica de Negocio:** Si modificaste esquemas de Mongoose (`User`, `Card`, `MarketOffer`, `Transaction`) o lógica contable/probabilidades, actualiza `F:\smilbot-project\smilbot-vault\Modelos y Contratos\`.
-3. Si agregaste una nota nueva a Obsidian, enlázala en `README.md` y en `README.md`.
+1. **Contratos de API REST:** Si agregaste, modificaste o eliminaste endpoints, parámetros, query params o payloads de respuesta, actualiza la nota correspondiente en `Backend API/` y actualiza `.env.example` si requiere nuevas variables.
+2. **Modelos y Lógica de Negocio:** Si modificaste esquemas de Mongoose (`User`, `Card`, `MarketOffer`, `Transaction`) o lógica contable/probabilidades, actualiza `Modelos y Contratos/`.
+3. Si agregaste una nota nueva a Obsidian, enlázala en `README.md`.
 
 ---
 
@@ -30,7 +31,7 @@ Antes de entregar una respuesta final o cerrar un cambio:
 - `libs/`: Utilidades y librerías transversales (ej. `libs/imageHosting` con patrón Provider para Cloudinary, Supabase y Local).
 - `openspec/`: Especificaciones y configuraciones de OpenSpec.
 - `.agents/`: Reglas, skills y flujos de trabajo para agentes de IA.
-- **Documentación Técnica:** Centralizada externamente en `F:\smilbot-project\smilbot-vault`.
+- **Documentación Técnica:** Centralizada externamente en la Bóveda de Obsidian ([Paradox021/smilbot-vault](https://github.com/Paradox021/smilbot-vault)).
 
 ---
 
