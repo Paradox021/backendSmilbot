@@ -149,14 +149,27 @@ const rollRandomCard = async (req, res) => {
             return res.status(400).json({ error: `No tienes suficientes monedas. Necesitas ${ROLL_COST} y tienes ${user.balance}` })
         }
 
-        const { card, roll } = await cardService.getRandomCard()
-        await userService.rollRandomCardPurchase(user.discordId, card, ROLL_COST, roll)
+        const isPity = (user.pityCount || 0) >= userService.PITY_THRESHOLD
+        let card, roll
 
-        // Devolver la carta incluyendo el número de roll obtenido
+        if (isPity) {
+            card = await cardService.getMythicCard()
+            roll = null
+        } else {
+            const rollResult = await cardService.getRandomCard()
+            card = rollResult.card
+            roll = rollResult.roll
+        }
+
+        const purchaseResult = await userService.rollRandomCardPurchase(user.discordId, card, ROLL_COST, roll, isPity)
+
+        // Devolver la carta incluyendo el número de roll obtenido y datos del sistema de pity
         const cardObj = typeof card.toObject === 'function' ? card.toObject() : card
         res.status(200).json({
             ...cardObj,
-            roll
+            roll,
+            isPity: purchaseResult.isPity,
+            pity: purchaseResult.pity
         })
     } catch (error) {
         if (error.code === 'INSUFFICIENT_BALANCE') {

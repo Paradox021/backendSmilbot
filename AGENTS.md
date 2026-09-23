@@ -1,4 +1,4 @@
-﻿# AGENTS.md - Reglas e Instrucciones para Agentes de IA en Backend Smilbot
+# AGENTS.md - Reglas e Instrucciones para Agentes de IA en Backend Smilbot
 
 Bienvenido al **Backend API de Smilbot**, un servicio REST modular desarrollado en Node.js (ES Modules) con Express.js y MongoDB (Mongoose), encargado de la persistencia de datos, auditoría contable (Ledger), transacciones atómicas, catálogo de cartas gacha, mercado P2P y analíticas de usuarios.
 
@@ -12,7 +12,8 @@ Este documento establece los principios de trabajo, la arquitectura del proyecto
 
 ### 📚 Bóveda Centralizada de Obsidian (Single Source of Truth)
 - **Repositorio:** [Paradox021/smilbot-vault](https://github.com/Paradox021/smilbot-vault)
-- **Acceso en Entorno:** Servidor MCP `obsidian_vault` (o la ruta local donde esté clonada la bóveda).
+- **Acceso en Entorno:**
+  - **Servidor MCP:** `obsidian_vault` (configurado en `~/.gemini/config/mcp_config.json`, donde se define la ruta a la bóveda para el entorno actual). Los agentes deben utilizar las herramientas del servidor MCP o consultar la ruta declarada en dicho archivo de configuración.
 - Esta bóveda es la **única fuente de verdad compartida** entre el **Backend API** y el **Bot de Discord**.
 
 Antes de entregar una respuesta final o cerrar un cambio:

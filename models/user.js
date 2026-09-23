@@ -28,7 +28,11 @@ const userSchema = new Schema(
         totalDailiesClaimed: {type:Number, default:0},
         totalCoinsEarned: {type:Number, default:0},
         totalCoinsSpent: {type:Number, default:0},
-        cardsOpenedCount: {type:Number, default:0}
+        cardsOpenedCount: {type:Number, default:0},
+
+        // --- CAMPOS DE PITY SYSTEM ---
+        pityCount: {type:Number, default:0, min:0},
+        pityMythicsCount: {type:Number, default:0, min:0}
     },
     {
         timestamps:true,

@@ -21,6 +21,10 @@ const transactionSchema = new Schema(
         amount: { type: Number, required: true },
         balanceBefore: { type: Number, required: true },
         balanceAfter: { type: Number, required: true },
+        // Metadata flexible para auditoría contable y telemetría:
+        // - CARD_BUY: { cardId, cardType, cardName, roll, isPity, pityCountBefore, pityCountAfter }
+        // - DAILY_CLAIM: { streakAtClaim, previousStreak, previousMaxStreak, isNewRecord, streakBroken }
+        // - MARKET_BUY / MARKET_SELL: { offerId, cardId, cardName, cardType, serverId, counterpartyDiscordId }
         metadata: {
             type: Schema.Types.Mixed,
             default: {}

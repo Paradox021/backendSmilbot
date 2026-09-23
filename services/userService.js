@@ -209,7 +209,12 @@ const dailyBalance = async (discordId, amount = 100) => {
 /**
  * Compra de carta gacha: descuenta saldo, suma métricas y genera transacción
  */
-const rollRandomCardPurchase = async (discordId, card, cost = 100, roll = null) => {
+const PITY_THRESHOLD = 250
+
+/**
+ * Compra de carta gacha: descuenta saldo, suma métricas, evalúa pity y genera transacción
+ */
+const rollRandomCardPurchase = async (discordId, card, cost = 100, roll = null, isPity = false) => {
     const user = await getUser(discordId)
     if (!user) throw new Error('Usuario no encontrado')
 
@@ -226,6 +231,25 @@ const rollRandomCardPurchase = async (discordId, card, cost = 100, roll = null) 
     user.totalCoinsSpent = (user.totalCoinsSpent || 0) + cost
     user.cardsOpenedCount = (user.cardsOpenedCount || 0) + 1
 
+    const pityCountBefore = user.pityCount || 0
+    let pityCountAfter = pityCountBefore
+
+    // Lógica del sistema de pity:
+    // - Si fue por pity: incrementa el contador histórico de míticas por pity y resetea racha a 0
+    // - Si fue mítica natural (type: 4): resetea racha a 0
+    // - Si no es mítica: incrementa racha en +1
+    if (isPity) {
+        user.pityMythicsCount = (user.pityMythicsCount || 0) + 1
+        user.pityCount = 0
+        pityCountAfter = 0
+    } else if (card.type === 4) {
+        user.pityCount = 0
+        pityCountAfter = 0
+    } else {
+        user.pityCount = (user.pityCount || 0) + 1
+        pityCountAfter = user.pityCount
+    }
+
     // Añadir carta al inventario (o incrementar contador)
     const existingCardIndex = (user.cards || []).findIndex(
         item => item.cardId && (item.cardId.toString() === card._id.toString() || item.cardId._id?.toString() === card._id.toString())
@@ -239,7 +263,7 @@ const rollRandomCardPurchase = async (discordId, card, cost = 100, roll = null) 
 
     await user.save()
 
-    // Registrar transacción en el Ledger
+    // Registrar transacción en el Ledger con telemetría de pity
     await createTransaction({
         discordId: user.discordId,
         type: 'CARD_BUY',
@@ -250,14 +274,23 @@ const rollRandomCardPurchase = async (discordId, card, cost = 100, roll = null) 
             cardId: card._id,
             cardType: card.type,
             cardName: card.name,
-            roll
+            roll,
+            isPity,
+            pityCountBefore,
+            pityCountAfter
         }
     })
 
     return {
         ok: true,
         user,
-        card
+        card,
+        isPity,
+        pity: {
+            current: pityCountAfter,
+            threshold: PITY_THRESHOLD,
+            remaining: Math.max(0, PITY_THRESHOLD - pityCountAfter)
+        }
     }
 }
 
@@ -404,6 +437,13 @@ const getUserEffectiveGachaBreakdown = async (user, cardTypeMap) => {
         }
     }
 
+    // Neutralizar míticas obtenidas por pity (no se computan en la suerte para mantener el RNG puro)
+    const pityMythicsToDiscount = Math.min(breakdown.mythic, user.pityMythicsCount || 0)
+    if (pityMythicsToDiscount > 0) {
+        breakdown.mythic -= pityMythicsToDiscount
+        totalCards = Math.max(0, totalCards - pityMythicsToDiscount)
+    }
+
     return { breakdown, totalCards }
 }
 
@@ -424,17 +464,34 @@ const getUserStats = async (discordId) => {
     })
     const totalCardsCount = (user.cards || []).reduce((sum, item) => sum + (item.count || 0), 0)
 
-    // Calcular métricas de suerte neutralizadas con historial de mercado
+    // Calcular métricas de suerte neutralizadas con historial de mercado y pity
     const cardTypeMap = await getCardTypeMap()
     const { breakdown, totalCards: effectiveGachaCards } = await getUserEffectiveGachaBreakdown(user, cardTypeMap)
     const luckMetrics = calculateLuckScore(breakdown, effectiveGachaCards)
     const minPullsThreshold = 20
     const eligibleForLeaderboard = effectiveGachaCards >= minPullsThreshold
 
+    const pullsSinceLastMythic = user.pityCount || 0
+    const pityThreshold = PITY_THRESHOLD
+    const pullsUntilGuaranteed = Math.max(0, pityThreshold - pullsSinceLastMythic)
+    const pityMythicsCount = user.pityMythicsCount || 0
+
     const luck = {
         ...luckMetrics,
+        breakdown: {
+            ...luckMetrics.breakdown,
+            pityMythics: pityMythicsCount
+        },
+        pityMythicsCount,
         eligibleForLeaderboard,
         ...(eligibleForLeaderboard ? {} : { cardsNeeded: minPullsThreshold - effectiveGachaCards })
+    }
+
+    const pity = {
+        pullsSinceLastMythic,
+        pityThreshold,
+        pullsUntilGuaranteed,
+        pityMythicsCount
     }
 
     return {
@@ -450,6 +507,7 @@ const getUserStats = async (discordId) => {
         cardsCount: totalCardsCount,
         cardsOpenedCount: user.cardsOpenedCount || 0,
         marketSalesCount,
+        pity,
         luck
     }
 }
@@ -531,7 +589,7 @@ const getLeaderboardLuck = async (order = 'desc', minPulls = 20, limit = 10) => 
 
     const [cardTypeMap, users, soldOffers] = await Promise.all([
         getCardTypeMap(),
-        User.find({ 'cards.0': { $exists: true } }).select('_id discordId username cards').lean(),
+        User.find({ 'cards.0': { $exists: true } }).select('_id discordId username cards pityMythicsCount').lean(),
         MarketOffer.find({ status: 'SOLD' }).select('cardId seller buyer sellerDiscordId buyerDiscordId').lean()
     ])
 
@@ -590,6 +648,13 @@ const getLeaderboardLuck = async (order = 'desc', minPulls = 20, limit = 10) => 
             }
         }
 
+        // Neutralizar míticas obtenidas por pity
+        const pityMythicsToDiscount = Math.min(breakdown.mythic, u.pityMythicsCount || 0)
+        if (pityMythicsToDiscount > 0) {
+            breakdown.mythic -= pityMythicsToDiscount
+            totalCards = Math.max(0, totalCards - pityMythicsToDiscount)
+        }
+
         if (totalCards >= parsedMinPulls) {
             const luckScore = calculateLuckScore(breakdown, totalCards)
             candidates.push({
@@ -600,7 +665,11 @@ const getLeaderboardLuck = async (order = 'desc', minPulls = 20, limit = 10) => 
                 luckDelta: luckScore.luckDelta,
                 tier: luckScore.tier,
                 tierCode: luckScore.tierCode,
-                breakdown: luckScore.breakdown
+                breakdown: {
+                    ...luckScore.breakdown,
+                    pityMythics: u.pityMythicsCount || 0
+                },
+                pityMythicsCount: u.pityMythicsCount || 0
             })
         }
     }
@@ -667,5 +736,6 @@ export {
     getLeaderboardWealth,
     getLeaderboardCards,
     getLeaderboardLuck,
-    calculateLuckScore
+    calculateLuckScore,
+    PITY_THRESHOLD
 }

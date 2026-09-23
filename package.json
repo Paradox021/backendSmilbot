@@ -9,7 +9,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
     "backfill": "node scripts/backfillStatsAndLedger.js",
-    "backfill:dry": "node scripts/backfillStatsAndLedger.js --dry-run"
+    "backfill:dry": "node scripts/backfillStatsAndLedger.js --dry-run",
+    "backfill:pity": "node scripts/backfillPity.js",
+    "backfill:pity:dry": "node scripts/backfillPity.js --dry-run"
   },
   "keywords": [
     "smilbot",

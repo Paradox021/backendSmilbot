@@ -2,21 +2,19 @@ schema: spec-driven
 
 context: |
   Architecture: Node.js (ES Modules), Express, MongoDB (Mongoose) backend for the Smilbot Discord bot ecosystem.
-  Documentation Policy: The `docs/` directory (specifically `docs/features/` and `docs/README.md`) is the canonical source of truth for bot commands, API contracts, database schemas, and business logic.
-  Whenever any endpoint, query parameter, model schema, business calculation, or system behavior is added or modified, the corresponding documentation in `docs/` MUST be updated alongside the code changes.
+  Documentation Policy: La Bóveda Centralizada de Obsidian (smilbot-vault, accesible vía el servidor MCP obsidian_vault) es la única fuente de verdad compartida para contratos de API, esquemas de base de datos y lógica de negocio.
+  Siempre que se agregue o modifique un endpoint, query parameter, modelo, cálculo de negocio o comportamiento del sistema, la documentación correspondiente en la Bóveda de Obsidian DEBE actualizarse.
 
 rules:
   proposal:
-    - Always list affected documentation files under the Impact section.
+    - Always list affected Obsidian Vault notes under the Impact section.
   tasks:
-    - Every change modifying or adding endpoints, database schemas, or business features MUST include an explicit task dedicated to updating `docs/features/` and `docs/README.md`.
-    - Documentation tasks must specify the exact documentation files to update and the required verification.
+    - Every change modifying or adding endpoints, database schemas, or business features MUST include an explicit task dedicated to updating documentation in the Obsidian Vault via MCP obsidian_vault.
 
 operations:
   apply:
     guidance:
-      - Always ensure all documentation tasks for `docs/` are fully completed and verified before concluding implementation.
-      - Never leave newly added endpoints or fields undocumented in `docs/README.md` or feature specs.
+      - Always ensure all documentation tasks for the Obsidian Vault are fully completed and verified before concluding implementation.
   archive:
     guidance:
-      - Confirm that docs/ reflects all capabilities introduced by the archived change.
+      - Confirm that the Obsidian Vault reflects all capabilities introduced by the archived change.

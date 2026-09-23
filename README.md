@@ -44,6 +44,12 @@ npm run backfill:dry
 # Aplicar migración de estadísticas en MongoDB
 npm run backfill
 
+# Simular cálculo histórico de racha de pity (Dry Run)
+npm run backfill:pity:dry
+
+# Aplicar sincronización de contadores de pity en MongoDB
+npm run backfill:pity
+
 # Migrar imágenes entre proveedores (ej: local a Supabase)
 node scripts/migrateImages.js --from=local --to=supabase
 ```
